@@ -1,4 +1,4 @@
-name: Release+Deploy Ticket
+name: Release
 
 on:
   release:
@@ -30,7 +30,7 @@ jobs:
         working-directory: backend
         env:
           IMAGE_TAG: ${{ github.event.release.tag_name }}
-          REGISTRY: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}
+          IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}
         run: |
           task ci-image-build
           task ci-image-push
