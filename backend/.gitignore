@@ -1,0 +1,14 @@
+# Python dependencies
+.venv/
+
+# Python cache
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+
+# Coverage reports
+/.coverage
+htmlcov/
+
+# Environment variables
+.env

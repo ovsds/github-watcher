@@ -1,0 +1,13 @@
+# Python Dependencies
+.venv/
+
+# Python cache
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+
+# Backend coverage reports
+backend/.coverage
+
+# Environment variables
+.env

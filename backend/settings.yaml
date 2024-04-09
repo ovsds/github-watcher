@@ -1,0 +1,17 @@
+tasks:
+  config_backend:
+    type: yaml_file
+    path: config.yaml
+  queue_backend:
+    type: memory
+  state_backend:
+    type: local_dir
+    path: state_folder
+  task_processor:
+    queue_state_mode: none
+  trigger_processor:
+    queue_state_mode: none
+  event_processor:
+    queue_state_mode: none
+logs:
+  min_level: DEBUG

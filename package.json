@@ -1,0 +1,24 @@
+{
+  "private": true,
+  "name": "github-watcher",
+  "devDependencies": {
+    "@commitlint/cli": "^19.0.3",
+    "@commitlint/config-conventional": "^19.0.3",
+    "husky": "^9.0.11",
+    "lint-staged": "^15.2.0",
+    "prettier": "^3.1.1",
+    "pyright": "1.1.357"
+  },
+  "hooks": {
+    "pre-commit": "lint-staged",
+    "commit-msg": "commitlint"
+  },
+  "lint-staged": {
+    "*.{md,yaml,json,js}": [
+      "prettier --check"
+    ]
+  },
+  "scripts": {
+    "prepare-husky": "husky install"
+  }
+}

@@ -1,0 +1,113 @@
+version: 3
+
+silent: true
+
+includes:
+  backend:
+    taskfile: ./backend
+    dir: ./backend
+
+vars:
+  NENV: "node_modules"
+  SERVICES: "backend"
+
+tasks:
+  _prettier:
+    internal: true
+    cmds:
+      - "{{.NENV}}/.bin/prettier {{.COMMAND}}"
+
+  _with_nvm:
+    internal: true
+    cmds:
+      - "source ${HOME}/.nvm/nvm.sh && nvm use && {{.COMMAND}}"
+
+  init:
+    desc: Initialize project environment
+    cmds:
+      - echo 'Installing node version...'
+      - task: _with_nvm
+        vars: { COMMAND: "nvm install" }
+
+      - echo 'Installing node dependencies...'
+      - task: _with_nvm
+        vars: { COMMAND: "npm clean-install" }
+
+      - echo 'Installing husky pre-commit...'
+      - task: _with_nvm
+        vars: { COMMAND: "npm run prepare-husky" }
+
+      - echo 'Installing poetry version...'
+      - poetry self update {{.POETRY_TARGET_VERSION}}
+
+      - for: { var: SERVICES, as: SERVICE }
+        task: "{{.SERVICE}}:init"
+    vars:
+      POETRY_TARGET_VERSION:
+        sh: cat .poetry-version
+
+  lint:
+    desc: Lint project
+    cmds:
+      - echo 'Running prettier checks...'
+      - task: _prettier
+        vars: { COMMAND: "--check ." }
+
+      - for: { var: SERVICES, as: SERVICE }
+        task: "{{.SERVICE}}:lint"
+
+  lint-fix:
+    desc: Lint fix project
+    cmds:
+      - echo 'Running prettier fixes...'
+      - task: _prettier
+        vars: { COMMAND: "--write ." }
+
+      - for: { var: SERVICES, as: SERVICE }
+        task: "{{.SERVICE}}:lint-fix"
+
+  test:
+    desc: Test project
+    cmds:
+      - for: { var: SERVICES, as: SERVICE }
+        task: "{{.SERVICE}}:test"
+
+  clean:
+    desc: Clean project environment
+    cmds:
+      - echo 'Cleaning node dependencies...'
+      - rm -rf {{.NENV}}
+
+      - for: { var: SERVICES, as: SERVICE }
+        task: "{{.SERVICE}}:clean"
+
+  dependencies-update:
+    desc: Update dependencies
+    cmds:
+      - echo 'Updating node dependencies...'
+      - task: _with_nvm
+        vars: { COMMAND: "npm update" }
+      - task: _with_nvm
+        vars: { COMMAND: "npm outdated" }
+      - task: _with_nvm
+        vars: { COMMAND: "npm audit" }
+
+      - for: { var: SERVICES, as: SERVICE }
+        task: "{{.SERVICE}}:dependencies-update"
+
+  # CI-specific
+
+  ci-init:
+    desc: Initialize project environment in CI
+    cmds:
+      - echo 'Installing node dependencies...'
+      - npm clean-install
+
+      - for: { var: SERVICES, as: SERVICE }
+        task: "{{.SERVICE}}:ci-init"
+
+  ci-test:
+    desc: Test project in CI
+    cmds:
+      - for: { var: SERVICES, as: SERVICE }
+        task: "{{.SERVICE}}:ci-test"

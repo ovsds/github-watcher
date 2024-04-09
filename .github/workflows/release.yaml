@@ -1,0 +1,36 @@
+name: Release+Deploy Ticket
+
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  deploy:
+    runs-on: ubuntu-20.04
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup_environment
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build backend images
+        working-directory: backend
+        env:
+          IMAGE_TAG: ${{ github.event.release.tag_name }}
+          REGISTRY: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}
+        run: |
+          task ci-image-build
+          task ci-image-push

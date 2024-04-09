@@ -1,0 +1,24 @@
+tasks:
+  - id: test_task
+    triggers:
+      - id: test_github_trigger
+        type: github
+        token_secret:
+          type: env
+          key: GITHUB_TOKEN
+        owner: psf
+        repos:
+          - black
+        subtriggers:
+          - type: repository_issue_created
+          - type: repository_pr_created
+          - type: repository_failed_workflow_run
+    actions:
+      - id: test_action
+        type: telegram_webhook
+        chat_id_secret:
+          type: env
+          key: TELEGRAM_CHAT_ID
+        token_secret:
+          type: env
+          key: TELEGRAM_TOKEN
