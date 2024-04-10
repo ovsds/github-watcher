@@ -2,6 +2,7 @@ import abc
 import contextlib
 import dataclasses
 import datetime
+import logging
 import typing
 
 import gql
@@ -11,6 +12,8 @@ import pydantic
 import pydantic.alias_generators as pydantic_alias_generators
 
 import lib.github.models as github_models
+
+logger = logging.getLogger(__name__)
 
 
 class BaseRequest(abc.ABC):
@@ -199,6 +202,7 @@ class GqlGithubClient:
             await gql_transport.close()
 
     async def _request(self, request: BaseRequest, response_model: type[ResponseT]) -> ResponseT:
+        logger.debug("Requesting document(%s) params(%s)", request.document, request.params)
         async with self.gql_client() as gql_client:
             response = await gql_client.execute_async(
                 document=request.document,
