@@ -10,6 +10,7 @@ import lib.task.services as task_services
 import lib.utils.aiojobs as aiojobs_utils
 import lib.utils.asyncio as asyncio_utils
 import lib.utils.lifecycle_manager as lifecycle_manager_utils
+import lib.utils.logging as logging_utils
 
 logger = logging.getLogger(__name__)
 
@@ -31,9 +32,21 @@ class Application:
     def from_settings(cls, settings: app_settings.Settings) -> typing.Self:
         # Logging
 
-        logging.basicConfig(
-            level=settings.logs.level,
-            format=settings.logs.format,
+        logging_utils.initialize(
+            config=logging_utils.create_config(
+                log_level=settings.logs.level,
+                log_format=settings.logs.format,
+                loggers={
+                    "asyncio": logging_utils.LoggerConfig(
+                        propagate=False,
+                        level=settings.logs.level,
+                    ),
+                    "gql.transport.aiohttp": logging_utils.LoggerConfig(
+                        propagate=False,
+                        level=settings.logs.level if settings.app.debug else "WARNING",
+                    ),
+                },
+            ),
         )
 
         logger.info("Initializing application")

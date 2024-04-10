@@ -35,7 +35,7 @@ class TaskProcessorJob(aiojobs_utils.RepeatableJob):
         try:
             async with self._queue_repository.acquire(topic=task_repositories.JobTopic.TASK) as task_job:
                 assert isinstance(task_job, task_job_models.TaskJob)
-                logging.debug("Processing TaskJob(%s)", task_job.id)
+                logger.debug("Processing TaskJob(%s)", task_job.id)
                 try:
                     await self._process_task(task_job=task_job)
                 except Exception:
