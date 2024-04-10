@@ -6,11 +6,11 @@ import lib.utils.aiojobs as aiojobs_utils
 
 logger = logging.getLogger(__name__)
 
-DELAY_TIMEOUT = 0
+MAX_RETRIES = 0
 RETRY_TIMEOUT = 1
 
 
-class TaskSpawnerJob(aiojobs_utils.RepeatableJob):
+class TaskSpawnerJob(aiojobs_utils.OneShotJob):
     def __init__(
         self,
         config_repository: task_repositories.ConfigRepositoryProtocol,
@@ -21,8 +21,8 @@ class TaskSpawnerJob(aiojobs_utils.RepeatableJob):
 
         super().__init__(
             logger=logger,
-            delay_timeout=DELAY_TIMEOUT,
             retry_timeout=RETRY_TIMEOUT,
+            max_retries=MAX_RETRIES,
         )
 
     async def _process(self) -> None:
@@ -41,7 +41,6 @@ class TaskSpawnerJob(aiojobs_utils.RepeatableJob):
 
         logger.debug("All tasks have been spawned, closing task topic")
         await self._queue_repository.close_topic(task_repositories.Topic.TASK_JOB)
-        self.finish()
 
 
 __all__ = [
