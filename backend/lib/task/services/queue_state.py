@@ -87,10 +87,12 @@ class QueueStateService:
                 await self._queue_repository.consume(topic, job)
 
         if len(jobs) == 0:
+            logger.info("No jobs to dump from Topic(%s)", topic)
+            await self._state_repository.clear(state_path)
             return
 
         await self._state_repository.set(state_path, {"jobs": jobs})
-        logger.info("%s jobs dumped to Topic(%s)", len(jobs), topic)
+        logger.info("%s jobs dumped from Topic(%s)", len(jobs), topic)
 
     async def _load_job_topics(
         self,
@@ -127,6 +129,7 @@ class QueueStateService:
 
         state = await self._state_repository.get(state_path)
         if state is None:
+            logger.info("State(%s) not found", state_path)
             return
 
         assert isinstance(state, dict)

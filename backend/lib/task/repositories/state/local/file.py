@@ -46,10 +46,19 @@ class LocalDirStateRepository(state_base.BaseStateRepository[LocalDirStateSettin
         async with aiofile.async_open(f"{self._root_path}/{path}.json", "w+") as file:
             await file.write(json_utils.dumps_str(value))
 
+    async def clear(self, path: str) -> None:
+        logger.debug("Clearing State(%s)", path)
+        try:
+            self._root_path.joinpath(f"{path}.json").unlink()
+        except FileNotFoundError:
+            pass
+
     @contextlib.asynccontextmanager
     async def acquire(self, path: str) -> typing.AsyncIterator[state_base.StateData | None]:
         async with asyncio_utils.acquire_file_lock(f"{self._root_path}/{path}.lock"):
+            logger.debug("Acquired lock for State(%s)", path)
             yield await self.get(path)
+            logger.debug("Released lock for State(%s)", path)
 
 
 __all__ = [

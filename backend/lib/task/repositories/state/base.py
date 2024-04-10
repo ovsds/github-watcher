@@ -16,6 +16,8 @@ class StateProtocol(typing.Protocol):
 
     async def set(self, value: StateData) -> None: ...
 
+    async def clear(self) -> None: ...
+
     def acquire(self) -> typing.AsyncContextManager[StateData | None]: ...
 
 
@@ -25,6 +27,8 @@ class StateRepositoryProtocol(typing.Protocol):
     async def get(self, path: str) -> StateData | None: ...
 
     async def set(self, path: str, value: StateData) -> None: ...
+
+    async def clear(self, path: str) -> None: ...
 
     def acquire(self, path: str) -> typing.AsyncContextManager[StateData | None]: ...
 
@@ -53,6 +57,9 @@ class State:
     async def set(self, value: StateData) -> None:
         await self._repository.set(self._path, value)
 
+    async def clear(self) -> None:
+        await self._repository.clear(self._path)
+
     @contextlib.asynccontextmanager
     async def acquire(self) -> typing.AsyncIterator[StateData | None]:
         async with self._repository.acquire(self._path) as state:
@@ -71,6 +78,8 @@ class BaseStateRepository(typing.Generic[SettingsT], abc.ABC):
 
     @abc.abstractmethod
     async def set(self, path: str, value: StateData) -> None: ...
+
+    async def clear(self, path: str) -> None: ...
 
     @abc.abstractmethod
     def acquire(self, path: str) -> typing.AsyncContextManager[StateData | None]: ...
