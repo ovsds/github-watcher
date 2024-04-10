@@ -8,6 +8,7 @@ import pydantic_settings
 import lib.task.repositories as task_repositories
 import lib.task.services as task_services
 import lib.utils.aiojobs as aiojobs_utils
+import lib.utils.logging as logging_utils
 
 
 class AppSettings(pydantic_settings.BaseSettings):
@@ -29,7 +30,7 @@ class AppSettings(pydantic_settings.BaseSettings):
 
 
 class LoggingSettings(pydantic_settings.BaseSettings):
-    level: str = "INFO"
+    level: logging_utils.LogLevel = "INFO"
     format: str = "%(asctime)s | %(name)s | %(levelname)s | %(message)s"
 
 

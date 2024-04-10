@@ -5,6 +5,7 @@ import typing
 
 import pydantic
 
+import lib.utils.logging as logging_utils
 import lib.utils.pydantic as pydantic_utils
 
 
@@ -60,7 +61,10 @@ class EnvSecretConfig(BaseSecretConfig):
 
     @property
     def value(self) -> str:
-        return os.environ[self.key]
+        value = os.environ[self.key]
+        logging_utils.register_secret(value=value, replace_value=f"REPLACED ENV SECRET {self.key}")
+
+        return value
 
 
 __all__ = [
