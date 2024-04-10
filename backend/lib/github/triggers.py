@@ -40,15 +40,47 @@ class SubtriggerConfig(pydantic_utils.BaseModel, pydantic_utils.IDMixinModel):
         raise ValueError(f"Unknown subtrigger type: {v['type']}")
 
 
-class RepositoryIssueCreatedSubtriggerConfig(SubtriggerConfig): ...
+class RepositoryIssueCreatedSubtriggerConfig(SubtriggerConfig):
+    include_author: list[str] = pydantic.Field(default_factory=list)
+    exclude_author: list[str] = pydantic.Field(default_factory=list)
+
+    def is_applicable(self, issue: github_models.Issue) -> bool:
+        if self.include_author and issue.author not in self.include_author:
+            return False
+        if issue.author in self.exclude_author:
+            return False
+
+        return True
 
 
-class RepositoryPRCreatedSubtriggerConfig(SubtriggerConfig): ...
+class RepositoryPRCreatedSubtriggerConfig(SubtriggerConfig):
+    include_author: list[str] = pydantic.Field(default_factory=list)
+    exclude_author: list[str] = pydantic.Field(default_factory=list)
+
+    def is_applicable(self, pr: github_models.PullRequest) -> bool:
+        if self.include_author and pr.author not in self.include_author:
+            return False
+        if pr.author in self.exclude_author:
+            return False
+
+        return True
 
 
 class RepositoryFailedWorkflowRunSubtriggerConfig(SubtriggerConfig):
     include: list[str] = pydantic.Field(default_factory=list)
     exclude: list[str] = pydantic.Field(default_factory=list)
+
+    def is_applicable(self, workflow_run: github_models.WorkflowRun) -> bool:
+        if workflow_run.status != "completed":
+            return False
+        if workflow_run.conclusion != "failure":
+            return False
+        if self.include and workflow_run.name not in self.include:
+            return False
+        if workflow_run.name in self.exclude:
+            return False
+
+        return True
 
 
 class GithubTriggerConfig(task_base.BaseTriggerConfig):
@@ -210,12 +242,13 @@ class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
                 break
 
             for issue in issues:
-                yield task_base.Event(
-                    id=f"issue_created__{issue.id}",
-                    title=f"📋New issue in {self._config.owner}/{repo}",
-                    body=f"Issue created by {issue.author}: {issue.title}",
-                    url=issue.url,
-                )
+                if subtrigger.is_applicable(issue):
+                    yield task_base.Event(
+                        id=f"issue_created__{issue.id}",
+                        title=f"📋New issue in {self._config.owner}/{repo}",
+                        body=f"Issue created by {issue.author}: {issue.title}",
+                        url=issue.url,
+                    )
                 last_issue_created = max(last_issue_created, issue.created_at)
                 repository_state.last_issue_created = last_issue_created
 
@@ -259,12 +292,13 @@ class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
                 break
 
             for pr in prs:
-                yield task_base.Event(
-                    id=f"pr_created__{pr.id}",
-                    title=f"🛠New PR in {self._config.owner}/{repo}",
-                    body=f"PR created by {pr.author}: {pr.title}",
-                    url=pr.url,
-                )
+                if subtrigger.is_applicable(pr):
+                    yield task_base.Event(
+                        id=f"pr_created__{pr.id}",
+                        title=f"🛠New PR in {self._config.owner}/{repo}",
+                        body=f"PR created by {pr.author}: {pr.title}",
+                        url=pr.url,
+                    )
                 last_pr_created = max(last_pr_created, pr.created_at)
                 repository_state.last_pr_created = last_pr_created
 
@@ -305,15 +339,8 @@ class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
         last_created = None
 
         async for workflow_run in self._rest_github_client.get_repository_workflow_runs(request):
-            if workflow_run.name in subtrigger.exclude:
-                continue
-
-            if subtrigger.include and workflow_run.name not in subtrigger.include:
-                continue
-
             if (
-                workflow_run.status == "completed"
-                and workflow_run.conclusion == "failure"
+                subtrigger.is_applicable(workflow_run)
                 and workflow_run not in repository_state.already_reported_failed_runs
             ):
                 yield task_base.Event(
