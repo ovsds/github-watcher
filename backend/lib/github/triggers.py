@@ -15,9 +15,6 @@ import lib.utils.pydantic as pydantic_utils
 logger = logging.getLogger(__name__)
 
 
-DEFAULT_TIMEDELTA = datetime.timedelta(days=10)
-
-
 class SubtriggerConfig(pydantic_utils.BaseModel, pydantic_utils.IDMixinModel):
     type: str
 
@@ -56,20 +53,25 @@ class GithubTriggerConfig(task_base.BaseTriggerConfig):
     token_secret: task_base.SecretConfigPydanticAnnotation
     owner: str
     repos: list[str]
+    default_timedelta_seconds: int = 60 * 60 * 24  # 1 day
     subtriggers: typing.Annotated[
         list[pydantic.SerializeAsAny[SubtriggerConfig]],
         pydantic.BeforeValidator(pydantic_utils.make_list_factory(SubtriggerConfig.factory)),
         pydantic.AfterValidator(pydantic_utils.check_unique_ids),
     ]
 
+    @property
+    def default_timedelta(self) -> datetime.timedelta:
+        return datetime.timedelta(seconds=self.default_timedelta_seconds)
+
 
 class RepositoryIssueCreatedState(pydantic_utils.BaseModel):
     last_issue_created: datetime.datetime
 
     @classmethod
-    def default_factory(cls) -> typing.Self:
+    def default_factory(cls, timedelta: datetime.timedelta) -> typing.Self:
         return cls(
-            last_issue_created=datetime.datetime.now(tz=datetime.UTC) - DEFAULT_TIMEDELTA,
+            last_issue_created=datetime.datetime.now(tz=datetime.UTC) - timedelta,
         )
 
 
@@ -77,9 +79,9 @@ class RepositoryPRCreatedState(pydantic_utils.BaseModel):
     last_pr_created: datetime.datetime
 
     @classmethod
-    def default_factory(cls) -> typing.Self:
+    def default_factory(cls, timedelta: datetime.timedelta) -> typing.Self:
         return cls(
-            last_pr_created=datetime.datetime.now(tz=datetime.UTC) - DEFAULT_TIMEDELTA,
+            last_pr_created=datetime.datetime.now(tz=datetime.UTC) - timedelta,
         )
 
 
@@ -88,9 +90,9 @@ class RepositoryFailedWorkflowRunState(pydantic_utils.BaseModel):
     already_reported_failed_runs: set[github_models.WorkflowRun] = pydantic.Field(default_factory=set)
 
     @classmethod
-    def default_factory(cls) -> typing.Self:
+    def default_factory(cls, timedelta: datetime.timedelta) -> typing.Self:
         return cls(
-            oldest_incomplete_created=datetime.datetime.now(tz=datetime.UTC) - DEFAULT_TIMEDELTA,
+            oldest_incomplete_created=datetime.datetime.now(tz=datetime.UTC) - timedelta,
         )
 
 
@@ -181,7 +183,9 @@ class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
         repo: str,
     ) -> typing.AsyncGenerator[task_base.Event, None]:
         if repo not in state.repository_issue_created:
-            state.repository_issue_created[repo] = RepositoryIssueCreatedState.default_factory()
+            state.repository_issue_created[repo] = RepositoryIssueCreatedState.default_factory(
+                self._config.default_timedelta,
+            )
         repository_state = state.repository_issue_created[repo]
         last_issue_created = repository_state.last_issue_created
 
@@ -221,7 +225,9 @@ class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
         repo: str,
     ) -> typing.AsyncGenerator[task_base.Event, None]:
         if repo not in state.repository_pr_created:
-            state.repository_pr_created[repo] = RepositoryPRCreatedState.default_factory()
+            state.repository_pr_created[repo] = RepositoryPRCreatedState.default_factory(
+                self._config.default_timedelta,
+            )
         repository_state = state.repository_pr_created[repo]
         last_pr_created = repository_state.last_pr_created
 
@@ -261,7 +267,9 @@ class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
         repo: str,
     ) -> typing.AsyncGenerator[task_base.Event, None]:
         if repo not in state.repository_failed_workflow_run:
-            state.repository_failed_workflow_run[repo] = RepositoryFailedWorkflowRunState.default_factory()
+            state.repository_failed_workflow_run[repo] = RepositoryFailedWorkflowRunState.default_factory(
+                self._config.default_timedelta,
+            )
         repository_state = state.repository_failed_workflow_run[repo]
 
         request = github_clients.GetRepositoryWorkflowRunsRequest(
