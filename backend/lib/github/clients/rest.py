@@ -111,7 +111,7 @@ class RestGithubClient:
             "Authorization": f"Bearer {self._token}",
             "Accept": "application/vnd.github.v3+json",
         }
-        logger.info("Requesting method(%s) url(%s) params(%s)", request.method, request.url, request.params)
+        logger.debug("Requesting method(%s) url(%s) params(%s)", request.method, request.url, request.params)
         async with self._aiohttp_client.request(
             method=request.method,
             url=request.url,
