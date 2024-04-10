@@ -36,7 +36,7 @@ class TriggerProcessorJob(aiojobs_utils.RepeatableJob):
 
     async def _process(self) -> None:
         try:
-            async with self._queue_repository.acquire(topic=task_repositories.Topic.TRIGGER_JOB) as trigger_job:
+            async with self._queue_repository.acquire(topic=task_repositories.JobTopic.TRIGGER) as trigger_job:
                 assert isinstance(trigger_job, task_job_models.TriggerJob)
                 logger.debug("Processing TriggerJob(%s)", trigger_job.id)
                 try:
@@ -45,24 +45,24 @@ class TriggerProcessorJob(aiojobs_utils.RepeatableJob):
                     logger.exception("Error processing TriggerJob(%s)", trigger_job.id)
                     if trigger_job.retry_count + 1 < self._max_retries:
                         await self._queue_repository.push(
-                            topic=task_repositories.Topic.TRIGGER_JOB,
+                            topic=task_repositories.JobTopic.TRIGGER,
                             item=trigger_job.copy_retry(),
                             validate_not_closed=False,
                         )
                     else:
                         logger.error("TriggerJob(%s) has reached max retries", trigger_job.id)
                         await self._queue_repository.push(
-                            topic=task_repositories.Topic.FAILED_TRIGGER_JOB,
+                            topic=task_repositories.JobTopic.FAILED_TRIGGER,
                             item=trigger_job,
                         )
-                    await self._queue_repository.consume(topic=task_repositories.Topic.TRIGGER_JOB, item=trigger_job)
+                    await self._queue_repository.consume(topic=task_repositories.JobTopic.TRIGGER, item=trigger_job)
                     raise
                 else:
-                    await self._queue_repository.consume(topic=task_repositories.Topic.TRIGGER_JOB, item=trigger_job)
+                    await self._queue_repository.consume(topic=task_repositories.JobTopic.TRIGGER, item=trigger_job)
                     logger.debug("TriggerJob(%s) has been processed", trigger_job.id)
         except task_repositories.QueueRepositoryProtocol.TopicFinished:
             logger.debug("Trigger queue is closed, finishing job")
-            await self._queue_repository.close_topic(topic=task_repositories.Topic.EVENT_JOB)
+            await self._queue_repository.close_topic(topic=task_repositories.JobTopic.EVENT)
             self.finish()
 
     async def _process_trigger(self, trigger_job: task_job_models.TriggerJob) -> None:
@@ -79,7 +79,7 @@ class TriggerProcessorJob(aiojobs_utils.RepeatableJob):
             async for raw_event in trigger_processor.produce_events():
                 for action in trigger_job.actions:
                     await self._queue_repository.push(
-                        topic=task_repositories.Topic.EVENT_JOB,
+                        topic=task_repositories.JobTopic.EVENT,
                         item=task_job_models.EventJob(
                             id=f"{task_id}/{trigger.id}/{action.id}/{raw_event.id}",
                             event=raw_event,

@@ -30,7 +30,7 @@ class TaskSpawnerJob(aiojobs_utils.OneShotJob):
 
         for task in config.tasks:
             await self._queue_repository.push(
-                topic=task_repositories.Topic.TASK_JOB,
+                topic=task_repositories.JobTopic.TASK,
                 item=task_jobs_models.TaskJob(
                     id=task.id,
                     task=task,
@@ -40,7 +40,7 @@ class TaskSpawnerJob(aiojobs_utils.OneShotJob):
             logger.debug("Task(%s) was spawned", task.id)
 
         logger.debug("All tasks have been spawned, closing task topic")
-        await self._queue_repository.close_topic(task_repositories.Topic.TASK_JOB)
+        await self._queue_repository.close_topic(task_repositories.JobTopic.TASK)
 
 
 __all__ = [

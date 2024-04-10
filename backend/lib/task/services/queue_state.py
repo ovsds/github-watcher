@@ -33,45 +33,45 @@ class QueueStateService:
 
     async def dump(self) -> None:
         if self._task_queue_mode != JobProcessorQueueStateMode.NONE:
-            await self._dump_topic(topic=task_repositories.Topic.TASK_JOB)
-            await self._dump_topic(topic=task_repositories.Topic.FAILED_TASK_JOB)
+            await self._dump_topic(topic=task_repositories.JobTopic.TASK)
+            await self._dump_topic(topic=task_repositories.JobTopic.FAILED_TASK)
 
         if self._trigger_queue_mode != JobProcessorQueueStateMode.NONE:
-            await self._dump_topic(topic=task_repositories.Topic.TRIGGER_JOB)
-            await self._dump_topic(topic=task_repositories.Topic.FAILED_TRIGGER_JOB)
+            await self._dump_topic(topic=task_repositories.JobTopic.TRIGGER)
+            await self._dump_topic(topic=task_repositories.JobTopic.FAILED_TRIGGER)
 
         if self._event_queue_mode != JobProcessorQueueStateMode.NONE:
-            await self._dump_topic(topic=task_repositories.Topic.EVENT_JOB)
-            await self._dump_topic(topic=task_repositories.Topic.FAILED_EVENT_JOB)
+            await self._dump_topic(topic=task_repositories.JobTopic.EVENT)
+            await self._dump_topic(topic=task_repositories.JobTopic.FAILED_EVENT)
 
     async def load(self):
         await self._load_job_topics(
             queue_mode=self._task_queue_mode,
-            topic=task_repositories.Topic.TASK_JOB,
-            failed_topic=task_repositories.Topic.FAILED_TASK_JOB,
+            topic=task_repositories.JobTopic.TASK,
+            failed_topic=task_repositories.JobTopic.FAILED_TASK,
             model=task_jobs.TaskJob,
         )
 
         await self._load_job_topics(
             queue_mode=self._trigger_queue_mode,
-            topic=task_repositories.Topic.TRIGGER_JOB,
-            failed_topic=task_repositories.Topic.FAILED_TRIGGER_JOB,
+            topic=task_repositories.JobTopic.TRIGGER,
+            failed_topic=task_repositories.JobTopic.FAILED_TRIGGER,
             model=task_jobs.TriggerJob,
         )
 
         await self._load_job_topics(
             queue_mode=self._event_queue_mode,
-            topic=task_repositories.Topic.EVENT_JOB,
-            failed_topic=task_repositories.Topic.FAILED_EVENT_JOB,
+            topic=task_repositories.JobTopic.EVENT,
+            failed_topic=task_repositories.JobTopic.FAILED_EVENT,
             model=task_jobs.EventJob,
         )
 
-    def _get_default_state_path(self, topic: task_repositories.Topic) -> str:
+    def _get_default_state_path(self, topic: task_repositories.JobTopic) -> str:
         return f"topics/{topic.value}"
 
     async def _dump_topic(
         self,
-        topic: task_repositories.Topic,
+        topic: task_repositories.JobTopic,
         state_path: str | None = None,
     ) -> None:
         state_path = state_path or self._get_default_state_path(topic)
@@ -97,8 +97,8 @@ class QueueStateService:
     async def _load_job_topics(
         self,
         queue_mode: JobProcessorQueueStateMode,
-        topic: task_repositories.Topic,
-        failed_topic: task_repositories.Topic,
+        topic: task_repositories.JobTopic,
+        failed_topic: task_repositories.JobTopic,
         model: type[task_jobs.BaseJob],
     ):
         if queue_mode == JobProcessorQueueStateMode.PRESERVE:
@@ -118,7 +118,7 @@ class QueueStateService:
 
     async def _load_topic(
         self,
-        topic: task_repositories.Topic,
+        topic: task_repositories.JobTopic,
         model: type[task_jobs.BaseJob],
         state_path: str | None = None,
         reset_retry_count: bool = False,

@@ -11,12 +11,26 @@ class DisposeError(ApplicationError):
     pass
 
 
-class StartServerError(ApplicationError):
+class ServerStartError(ApplicationError):
+    pass
+
+
+class ServerRuntimeError(ApplicationError):
+    pass
+
+
+class ApplicationFailedJobsError(ApplicationError):
+    pass
+
+
+class ApplicationTimeoutError(ApplicationError):
     pass
 
 
 __all__ = [
     "ApplicationError",
+    "ApplicationFailedJobsError",
+    "ApplicationTimeoutError",
     "DisposeError",
-    "StartServerError",
+    "ServerStartError",
 ]

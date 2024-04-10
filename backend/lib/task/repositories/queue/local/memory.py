@@ -104,11 +104,14 @@ class MemoryQueueRepository(queue_base.BaseQueueRepository[MemoryQueueSettings])
     def is_finished(self) -> bool:
         return all(topic.is_finished for topic in self._topics.values())
 
-    def is_topic_finished(self, topic: queue_base.Topic) -> bool:
+    def is_topic_finished(self, topic: queue_base.JobTopic) -> bool:
         return self._topics[topic].is_finished
 
+    def is_topic_empty(self, topic: queue_base.JobTopic) -> bool:
+        return self._topics[topic].empty()
+
     @contextlib.contextmanager
-    def _wrap_queue_errors(self, topic: queue_base.Topic) -> typing.Iterator[None]:
+    def _wrap_queue_errors(self, topic: queue_base.JobTopic) -> typing.Iterator[None]:
         try:
             yield
         except Topic.TopicClosed as exc:
@@ -116,22 +119,27 @@ class MemoryQueueRepository(queue_base.BaseQueueRepository[MemoryQueueSettings])
         except Topic.TopicFinished as exc:
             raise self.TopicFinished(f"Topic({topic}) is already finished.") from exc
 
-    async def push(self, topic: queue_base.Topic, item: queue_base.QueueItem, validate_not_closed: bool = True) -> None:
+    async def push(
+        self,
+        topic: queue_base.JobTopic,
+        item: queue_base.QueueItem,
+        validate_not_closed: bool = True,
+    ) -> None:
         logger.debug("Pushing item to topic %s: %s", topic, item)
         with self._wrap_queue_errors(topic):
             await self._topics[topic].put(item, validate_not_closed=validate_not_closed)
 
     @contextlib.asynccontextmanager
-    async def acquire(self, topic: queue_base.Topic) -> typing.AsyncIterator[queue_base.QueueItem]:
+    async def acquire(self, topic: queue_base.JobTopic) -> typing.AsyncIterator[queue_base.QueueItem]:
         with self._wrap_queue_errors(topic):
             async with self._topics[topic].acquire() as task:
                 yield task
 
-    async def consume(self, topic: queue_base.Topic, item: queue_base.QueueItem) -> None:
+    async def consume(self, topic: queue_base.JobTopic, item: queue_base.QueueItem) -> None:
         logger.debug("Consuming item from topic %s: %s", topic, item)
         await self._topics[topic].consume(item)
 
-    async def close_topic(self, topic: queue_base.Topic) -> None:
+    async def close_topic(self, topic: queue_base.JobTopic) -> None:
         await self._topics[topic].close()
 
 
