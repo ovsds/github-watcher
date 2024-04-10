@@ -9,19 +9,19 @@ import pydantic_settings
 import lib.utils.json as json_utils
 
 
-class Topic(str, enum.Enum):
-    TASK_JOB = "task_jobs"
-    TRIGGER_JOB = "trigger_jobs"
-    EVENT_JOB = "events_jobs"
+class JobTopic(str, enum.Enum):
+    TASK = "task_jobs"
+    TRIGGER = "trigger_jobs"
+    EVENT = "events_jobs"
 
-    FAILED_TASK_JOB = "failed_tasks_jobs"
-    FAILED_TRIGGER_JOB = "failed_trigger_jobs"
-    FAILED_EVENT_JOB = "failed_event_jobs"
+    FAILED_TASK = "failed_tasks_jobs"
+    FAILED_TRIGGER = "failed_trigger_jobs"
+    FAILED_EVENT = "failed_event_jobs"
 
 
-ALL_TOPICS = frozenset(topic for topic in Topic)
-FAILED_TOPICS = frozenset((Topic.FAILED_TASK_JOB, Topic.FAILED_TRIGGER_JOB, Topic.FAILED_EVENT_JOB))
-TOPICS = ALL_TOPICS - FAILED_TOPICS
+ALL_JOB_TOPICS = frozenset(topic for topic in JobTopic)
+FAILED_JOB_TOPICS = frozenset((JobTopic.FAILED_TASK, JobTopic.FAILED_TRIGGER, JobTopic.FAILED_EVENT))
+JOB_TOPICS = ALL_JOB_TOPICS - FAILED_JOB_TOPICS
 
 
 class QueueItem(typing.Protocol):
@@ -44,21 +44,23 @@ class QueueRepositoryProtocol(typing.Protocol):
     @property
     def is_finished(self) -> bool: ...
 
-    def is_topic_finished(self, topic: Topic) -> bool: ...
+    def is_topic_finished(self, topic: JobTopic) -> bool: ...
 
-    async def push(self, topic: Topic, item: QueueItem, validate_not_closed: bool = True) -> None:
+    def is_topic_empty(self, topic: JobTopic) -> bool: ...
+
+    async def push(self, topic: JobTopic, item: QueueItem, validate_not_closed: bool = True) -> None:
         """
         :raises TopicClosed: if topic is closed
         """
 
-    def acquire(self, topic: Topic) -> typing.AsyncContextManager[QueueItem]:  # pyright: ignore[reportReturnType]
+    def acquire(self, topic: JobTopic) -> typing.AsyncContextManager[QueueItem]:  # pyright: ignore[reportReturnType]
         """
         :raises TopicFinished: if topic is finished
         """
 
-    async def consume(self, topic: Topic, item: QueueItem) -> None: ...
+    async def consume(self, topic: JobTopic, item: QueueItem) -> None: ...
 
-    async def close_topic(self, topic: Topic) -> None: ...
+    async def close_topic(self, topic: JobTopic) -> None: ...
 
 
 class BaseQueueSettings(pydantic_settings.BaseSettings):
@@ -87,19 +89,22 @@ class BaseQueueRepository(typing.Generic[SettingsT], abc.ABC):
     def is_finished(self) -> bool: ...
 
     @abc.abstractmethod
-    def is_topic_finished(self, topic: Topic) -> bool: ...
+    def is_topic_finished(self, topic: JobTopic) -> bool: ...
 
     @abc.abstractmethod
-    async def push(self, topic: Topic, item: QueueItem, validate_not_closed: bool = True) -> None: ...
+    def is_topic_empty(self, topic: JobTopic) -> bool: ...
 
     @abc.abstractmethod
-    def acquire(self, topic: Topic) -> typing.AsyncContextManager[QueueItem]: ...
+    async def push(self, topic: JobTopic, item: QueueItem, validate_not_closed: bool = True) -> None: ...
 
     @abc.abstractmethod
-    async def consume(self, topic: Topic, item: QueueItem) -> None: ...
+    def acquire(self, topic: JobTopic) -> typing.AsyncContextManager[QueueItem]: ...
 
     @abc.abstractmethod
-    async def close_topic(self, topic: Topic) -> None: ...
+    async def consume(self, topic: JobTopic, item: QueueItem) -> None: ...
+
+    @abc.abstractmethod
+    async def close_topic(self, topic: JobTopic) -> None: ...
 
 
 @dataclasses.dataclass
@@ -137,15 +142,15 @@ def queue_repository_factory(settings: BaseQueueSettings) -> QueueRepositoryProt
 
 
 __all__ = [
-    "ALL_TOPICS",
+    "ALL_JOB_TOPICS",
     "BaseQueueRepository",
     "BaseQueueSettings",
-    "FAILED_TOPICS",
+    "FAILED_JOB_TOPICS",
+    "JOB_TOPICS",
+    "JobTopic",
     "QueueItem",
     "QueueRepositoryProtocol",
     "RegistryRecord",
-    "TOPICS",
-    "Topic",
     "queue_repository_factory",
     "queue_settings_factory",
     "register_queue_backend",

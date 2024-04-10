@@ -34,7 +34,7 @@ class EventProcessorJob(aiojobs_utils.RepeatableJob):
 
     async def _process(self) -> None:
         try:
-            async with self._queue_repository.acquire(topic=task_repositories.Topic.EVENT_JOB) as event_job:
+            async with self._queue_repository.acquire(topic=task_repositories.JobTopic.EVENT) as event_job:
                 assert isinstance(event_job, task_job_models.EventJob)
                 logger.debug("Processing EventJob(%s)", event_job.id)
                 try:
@@ -43,20 +43,20 @@ class EventProcessorJob(aiojobs_utils.RepeatableJob):
                     logger.error("EventJob(%s) has failed", event_job.id)
                     if event_job.retry_count + 1 < self._max_retries:
                         await self._queue_repository.push(
-                            topic=task_repositories.Topic.EVENT_JOB,
+                            topic=task_repositories.JobTopic.EVENT,
                             item=event_job.copy_retry(),
                             validate_not_closed=False,
                         )
                     else:
                         logger.error("EventJob(%s) has reached max retries", event_job.id)
                         await self._queue_repository.push(
-                            topic=task_repositories.Topic.FAILED_EVENT_JOB,
+                            topic=task_repositories.JobTopic.FAILED_EVENT,
                             item=event_job,
                         )
-                    await self._queue_repository.consume(topic=task_repositories.Topic.EVENT_JOB, item=event_job)
+                    await self._queue_repository.consume(topic=task_repositories.JobTopic.EVENT, item=event_job)
                     raise
                 else:
-                    await self._queue_repository.consume(topic=task_repositories.Topic.EVENT_JOB, item=event_job)
+                    await self._queue_repository.consume(topic=task_repositories.JobTopic.EVENT, item=event_job)
                     logger.debug("EventJob(%s) has been processed", event_job.id)
         except task_repositories.QueueRepositoryProtocol.TopicFinished:
             logger.debug("Event queue is closed, finishing job")

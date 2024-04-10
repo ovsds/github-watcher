@@ -170,7 +170,7 @@ class Application:
             await self._lifecycle_manager.on_startup()
         except lifecycle_manager_utils.LifecycleManager.StartupError as start_error:
             logger.error("Application has failed to start")
-            raise app_errors.StartServerError("Application has failed to start, see logs above") from start_error
+            raise app_errors.ServerStartError("Application has failed to start, see logs above") from start_error
 
         logger.info("Application is starting")
         try:
@@ -178,22 +178,30 @@ class Application:
         except asyncio.CancelledError:
             logger.info("Application has been interrupted")
         except BaseException as unexpected_error:
-            logger.exception("Application failed to start")
-
-            raise app_errors.StartServerError("Application failed to start") from unexpected_error
+            logger.exception("Application runtime error")
+            raise app_errors.ServerRuntimeError("Application runtime error") from unexpected_error
 
     async def _start(self) -> None:
         timer = asyncio_utils.TimeoutTimer(timeout=self._settings.tasks.timeout)
 
         while not timer.is_expired:
             all_topics_finished = all(
-                self._queue_repository.is_topic_finished(topic) for topic in task_repositories.TOPICS
+                self._queue_repository.is_topic_finished(topic) for topic in task_repositories.JOB_TOPICS
             )
             if self._aiojobs_scheduler.is_empty and all_topics_finished:
                 break
             await asyncio.sleep(1)
         else:
             logger.warning("Application has timed out and will be stopped prematurely")
+            raise app_errors.ApplicationTimeoutError("Application has timed out")
+
+        logger.info("Application has finished successfully")
+        failed_topics_empty = all(
+            self._queue_repository.is_topic_empty(topic) for topic in task_repositories.FAILED_JOB_TOPICS
+        )
+        if not failed_topics_empty:
+            logger.warning("Application has finished with failed jobs")
+            raise app_errors.ApplicationFailedJobsError("Application has finished with failed jobs")
 
     async def dispose(self) -> None:
         logger.info("Application is shutting down...")

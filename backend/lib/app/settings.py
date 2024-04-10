@@ -104,6 +104,8 @@ class Settings(pydantic_settings.BaseSettings):
 
 __all__ = [
     "AppSettings",
+    "JobProcessorSettings",
     "LoggingSettings",
     "Settings",
+    "TasksSettings",
 ]
