@@ -12,3 +12,7 @@ htmlcov/
 
 # Environment variables
 .env
+.secrets
+
+# Local app state
+example/state

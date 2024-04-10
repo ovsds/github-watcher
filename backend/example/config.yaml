@@ -1,0 +1,25 @@
+tasks:
+  - id: example_task
+    triggers:
+      - id: example_trigger
+        type: github
+        token_secret:
+          type: env
+          key: GITHUB_TOKEN
+        owner: ovsds
+        repos:
+          - github-watcher
+          - github-watcher-action
+        subtriggers:
+          - type: repository_issue_created
+          - type: repository_pr_created
+          - type: repository_failed_workflow_run
+    actions:
+      - id: example_action
+        type: telegram_webhook
+        chat_id_secret:
+          type: env
+          key: TELEGRAM_CHAT_ID
+        token_secret:
+          type: env
+          key: TELEGRAM_TOKEN

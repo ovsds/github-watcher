@@ -36,6 +36,7 @@ tasks:
       IGNORE_ERRORS: '{{.IGNORE_ERRORS | default "true"}}'
 
   init:
+    desc: Initialize environment
     cmds:
       - echo 'Installing python dependencies...'
       - poetry install
@@ -43,6 +44,7 @@ tasks:
         --with dev
 
   lint:
+    desc: Run lint checks
     cmds:
       - echo 'Running poetry checks...'
       - poetry check --lock
@@ -70,6 +72,7 @@ tasks:
       - task: _pyright
 
   lint-fix:
+    desc: Fix lint issues
     cmds:
       - echo 'Running poetry fixes...'
       - poetry lock --no-update
@@ -108,11 +111,13 @@ tasks:
         .
 
   test:
+    desc: Run tests
     cmds:
       - echo 'Running pytest...'
       - "{{.PENV}}/bin/python -m pytest tests"
 
   test-container:
+    desc: Run tests in container
     cmds:
       - task: image-build
         vars: { TARGET: tests }
@@ -122,16 +127,19 @@ tasks:
         {{.IMAGE_NAME}}:tests
 
   test-coverage-run:
+    desc: Run tests with coverage
     cmds:
       - echo 'Running test coverage...'
       - "{{.PENV}}/bin/python -m coverage run -m pytest tests"
 
   test-coverage-report:
+    desc: Show test coverage report
     cmds:
       - echo 'Reporting test coverage...'
       - "{{.PENV}}/bin/python -m coverage report -m"
 
   test-coverage-html:
+    desc: Show test coverage report in browser
     cmds:
       - echo 'Generating test coverage report...'
       - "{{.PENV}}/bin/python -m coverage html"
@@ -141,6 +149,7 @@ tasks:
         sh: "[ $(uname) = 'Darwin' ] && echo 'file://$(pwd)/htmlcov/index.html' || echo 'htmlcov/index.html'"
 
   clean:
+    desc: Clean environment
     cmds:
       - echo 'Cleaning python dependencies...'
       - rm -rf {{.PENV}}
@@ -156,17 +165,20 @@ tasks:
       - rm -rf htmlcov
 
   dependencies-update:
+    desc: Update python dependencies
     cmds:
       - echo 'Updating python dependencies...'
       - poetry update
       - poetry show --outdated
 
   dev-server-start:
+    desc: Start development application
     cmds:
       - echo 'Starting server...'
       - "{{.PENV}}/bin/python -m bin.main"
 
   dev-server-container-start:
+    desc: Start development application in container
     cmds:
       - task: image-build
         vars: { TARGET: runtime }
@@ -176,6 +188,7 @@ tasks:
         {{.IMAGE_NAME}}:runtime
 
   ci-init:
+    desc: CI-specific environment initialization
     cmds:
       - echo 'Installing python dependencies...'
       - poetry install
@@ -183,6 +196,7 @@ tasks:
         --with dev
 
   ci-test:
+    desc: CI-specific test run
     cmds:
       - task: test-container
 
@@ -199,6 +213,7 @@ tasks:
           TAG: "{{.IMAGE_REGISTRY}}/{{.IMAGE_NAME}}:{{.IMAGE_TAG}}"
 
   ci-image-push:
+    desc: Push image to registry for CI usage
     requires:
       vars:
         - IMAGE_TAG

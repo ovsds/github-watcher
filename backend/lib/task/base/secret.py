@@ -39,6 +39,9 @@ def register_secret(
 
 
 def action_config_factory(data: typing.Any) -> BaseSecretConfig:
+    if isinstance(data, BaseSecretConfig):
+        return data
+
     assert isinstance(data, dict)
     assert "type" in data
 

@@ -1,7 +1,5 @@
 import typing
 
-import pydantic
-
 import lib.task.base as task_base
 import lib.utils.json as json_utils
 import lib.utils.pydantic as pydantic_utils
@@ -34,13 +32,13 @@ class TaskJob(BaseJob):
 
 class TriggerJob(BaseJob):
     task_id: str
-    trigger: pydantic.SerializeAsAny[task_base.BaseTriggerConfig]
-    actions: list[pydantic.SerializeAsAny[task_base.BaseActionConfig]]
+    trigger: task_base.TriggerConfigPydanticAnnotation
+    actions: task_base.ActionConfigListPydanticAnnotation
 
 
 class EventJob(BaseJob):
     event: task_base.Event
-    action: pydantic.SerializeAsAny[task_base.BaseActionConfig]
+    action: task_base.ActionConfigPydanticAnnotation
 
 
 __all__ = [

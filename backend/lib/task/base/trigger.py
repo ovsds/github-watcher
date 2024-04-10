@@ -23,6 +23,17 @@ class BaseTriggerConfig(pydantic_utils.BaseModel, pydantic_utils.IDMixinModel):
         return trigger_config_factory(v)
 
 
+TriggerConfigPydanticAnnotation = typing.Annotated[
+    pydantic.SerializeAsAny[BaseTriggerConfig],
+    pydantic.BeforeValidator(BaseTriggerConfig.factory),
+]
+TriggerConfigListPydanticAnnotation = typing.Annotated[
+    list[pydantic.SerializeAsAny[BaseTriggerConfig]],
+    pydantic.BeforeValidator(pydantic_utils.make_list_factory(BaseTriggerConfig.factory)),
+    pydantic.AfterValidator(pydantic_utils.check_unique_ids),
+]
+
+
 ConfigT = typing.TypeVar("ConfigT", bound=BaseTriggerConfig)
 
 
@@ -58,6 +69,9 @@ def register_trigger(
 
 
 def trigger_config_factory(data: typing.Any) -> BaseTriggerConfig:
+    if isinstance(data, BaseTriggerConfig):
+        return data
+
     assert isinstance(data, dict)
     assert "type" in data
 
@@ -75,6 +89,8 @@ def trigger_processor_factory(
 
 __all__ = [
     "BaseTriggerConfig",
+    "TriggerConfigListPydanticAnnotation",
+    "TriggerConfigPydanticAnnotation",
     "TriggerProcessor",
     "TriggerProcessorProtocol",
     "register_trigger",

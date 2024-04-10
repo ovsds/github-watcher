@@ -22,6 +22,17 @@ class BaseActionConfig(pydantic_utils.BaseModel, pydantic_utils.IDMixinModel):
         return action_config_factory(v)
 
 
+ActionConfigPydanticAnnotation = typing.Annotated[
+    pydantic.SerializeAsAny[BaseActionConfig],
+    pydantic.BeforeValidator(BaseActionConfig.factory),
+]
+ActionConfigListPydanticAnnotation = typing.Annotated[
+    list[pydantic.SerializeAsAny[BaseActionConfig]],
+    pydantic.BeforeValidator(pydantic_utils.make_list_factory(BaseActionConfig.factory)),
+    pydantic.AfterValidator(pydantic_utils.check_unique_ids),
+]
+
+
 ConfigT = typing.TypeVar("ConfigT", bound=BaseActionConfig)
 
 
@@ -57,6 +68,9 @@ def register_action(
 
 
 def action_config_factory(data: typing.Any) -> BaseActionConfig:
+    if isinstance(data, BaseActionConfig):
+        return data
+
     assert isinstance(data, dict)
     assert "type" in data
 
@@ -72,6 +86,8 @@ def action_processor_factory(
 
 
 __all__ = [
+    "ActionConfigListPydanticAnnotation",
+    "ActionConfigPydanticAnnotation",
     "ActionProcessor",
     "ActionProcessorProtocol",
     "BaseActionConfig",
