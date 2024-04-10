@@ -1,0 +1,29 @@
+name: Github Watcher
+
+concurrency:
+  group: ${{ github.workflow }}
+
+on:
+  schedule:
+    - cron: "*/5 * * * *" # every 5 minutes
+  workflow_dispatch:
+
+jobs:
+  run-github-watcher:
+    runs-on: ubuntu-20.04
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run
+        uses: ovsds/github-watcher-action@main
+        with:
+          config_path: .github/github-watcher-config.yaml
+          env_variables: |
+            GITHUB_TOKEN=${{ secrets.PERSONAL_GITHUB_TOKEN }}
+            TELEGRAM_TOKEN=${{ secrets.TELEGRAM_TOKEN }}
+            TELEGRAM_CHAT_ID=${{ secrets.TELEGRAM_CHAT_ID }}
