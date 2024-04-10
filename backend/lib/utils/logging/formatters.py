@@ -5,6 +5,9 @@ _SECRETS: dict[str, str] = dict()  # value: replace_value
 
 
 def register_secret(value: str, replace_value: str) -> None:
+    if value == "":
+        return
+
     _SECRETS[value] = replace_value
 
 
