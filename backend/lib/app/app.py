@@ -32,7 +32,7 @@ class Application:
         # Logging
 
         logging.basicConfig(
-            level=settings.logs.min_level,
+            level=settings.logs.level,
             format=settings.logs.format,
         )
 

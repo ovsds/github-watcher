@@ -14,7 +14,7 @@ class AppSettings(pydantic_settings.BaseSettings):
     env: str = "development"
     name: str = "github-watcher-backend"
     version: str = "0.0.1"
-    debug: bool = True
+    debug: bool = False
 
     @property
     def is_development(self) -> bool:
@@ -29,7 +29,7 @@ class AppSettings(pydantic_settings.BaseSettings):
 
 
 class LoggingSettings(pydantic_settings.BaseSettings):
-    min_level: str = "INFO"
+    level: str = "INFO"
     format: str = "%(asctime)s | %(name)s | %(levelname)s | %(message)s"
 
 
