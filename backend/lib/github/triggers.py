@@ -46,7 +46,9 @@ class RepositoryIssueCreatedSubtriggerConfig(SubtriggerConfig): ...
 class RepositoryPRCreatedSubtriggerConfig(SubtriggerConfig): ...
 
 
-class RepositoryFailedWorkflowRunSubtriggerConfig(SubtriggerConfig): ...
+class RepositoryFailedWorkflowRunSubtriggerConfig(SubtriggerConfig):
+    include: list[str] = pydantic.Field(default_factory=list)
+    exclude: list[str] = pydantic.Field(default_factory=list)
 
 
 class GithubTriggerConfig(task_base.BaseTriggerConfig):
@@ -160,26 +162,33 @@ class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
         state: GithubTriggerState,
     ) -> typing.AsyncGenerator[task_base.Event, None]:
         if isinstance(subtrigger, RepositoryIssueCreatedSubtriggerConfig):
-            return self._process_all_repository_issue_created(state=state)
+            return self._process_all_repository_issue_created(state=state, subtrigger=subtrigger)
         if isinstance(subtrigger, RepositoryPRCreatedSubtriggerConfig):
-            return self._process_all_repository_pr_created(state=state)
+            return self._process_all_repository_pr_created(state=state, subtrigger=subtrigger)
         if isinstance(subtrigger, RepositoryFailedWorkflowRunSubtriggerConfig):
-            return self._process_all_repository_failed_workflow_run(state=state)
+            return self._process_all_repository_failed_workflow_run(state=state, subtrigger=subtrigger)
 
         raise ValueError(f"Unknown subtrigger: {subtrigger}")
 
     async def _process_all_repository_issue_created(
         self,
         state: GithubTriggerState,
+        subtrigger: RepositoryIssueCreatedSubtriggerConfig,
     ) -> typing.AsyncGenerator[task_base.Event, None]:
         async for event in asyncio_utils.GatherIterators(
-            self._process_repository_issue_created(state=state, repo=repo) for repo in self._config.repos
+            self._process_repository_issue_created(
+                state=state,
+                subtrigger=subtrigger,
+                repo=repo,
+            )
+            for repo in self._config.repos
         ):
             yield event
 
     async def _process_repository_issue_created(
         self,
         state: GithubTriggerState,
+        subtrigger: RepositoryIssueCreatedSubtriggerConfig,
         repo: str,
     ) -> typing.AsyncGenerator[task_base.Event, None]:
         if repo not in state.repository_issue_created:
@@ -213,15 +222,22 @@ class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
     async def _process_all_repository_pr_created(
         self,
         state: GithubTriggerState,
+        subtrigger: RepositoryPRCreatedSubtriggerConfig,
     ) -> typing.AsyncGenerator[task_base.Event, None]:
         async for event in asyncio_utils.GatherIterators(
-            self._process_repository_pr_created(state=state, repo=repo) for repo in self._config.repos
+            self._process_repository_pr_created(
+                state=state,
+                subtrigger=subtrigger,
+                repo=repo,
+            )
+            for repo in self._config.repos
         ):
             yield event
 
     async def _process_repository_pr_created(
         self,
         state: GithubTriggerState,
+        subtrigger: RepositoryPRCreatedSubtriggerConfig,
         repo: str,
     ) -> typing.AsyncGenerator[task_base.Event, None]:
         if repo not in state.repository_pr_created:
@@ -255,15 +271,22 @@ class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
     async def _process_all_repository_failed_workflow_run(
         self,
         state: GithubTriggerState,
+        subtrigger: RepositoryFailedWorkflowRunSubtriggerConfig,
     ) -> typing.AsyncGenerator[task_base.Event, None]:
         async for event in asyncio_utils.GatherIterators(
-            self._process_repository_failed_workflow_run(state=state, repo=repo) for repo in self._config.repos
+            self._process_repository_failed_workflow_run(
+                state=state,
+                subtrigger=subtrigger,
+                repo=repo,
+            )
+            for repo in self._config.repos
         ):
             yield event
 
     async def _process_repository_failed_workflow_run(
         self,
         state: GithubTriggerState,
+        subtrigger: RepositoryFailedWorkflowRunSubtriggerConfig,
         repo: str,
     ) -> typing.AsyncGenerator[task_base.Event, None]:
         if repo not in state.repository_failed_workflow_run:
@@ -282,6 +305,12 @@ class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
         last_created = None
 
         async for workflow_run in self._rest_github_client.get_repository_workflow_runs(request):
+            if workflow_run.name in subtrigger.exclude:
+                continue
+
+            if subtrigger.include and workflow_run.name not in subtrigger.include:
+                continue
+
             if (
                 workflow_run.status == "completed"
                 and workflow_run.conclusion == "failure"
