@@ -59,7 +59,7 @@ class TriggerProcessorJob(aiojobs_utils.RepeatableJob):
                     raise
                 else:
                     await self._queue_repository.consume(topic=task_repositories.JobTopic.TRIGGER, item=trigger_job)
-                    logger.debug("TriggerJob(%s) has been processed", trigger_job.id)
+                    logger.info("TriggerJob(%s) has been processed", trigger_job.id)
         except task_repositories.QueueRepositoryProtocol.TopicFinished:
             logger.debug("Trigger queue is closed, finishing job")
             await self._queue_repository.close_topic(topic=task_repositories.JobTopic.EVENT)
@@ -78,14 +78,16 @@ class TriggerProcessorJob(aiojobs_utils.RepeatableJob):
         try:
             async for raw_event in trigger_processor.produce_events():
                 for action in trigger_job.actions:
+                    event_job = task_job_models.EventJob(
+                        id=f"{task_id}/{trigger.id}/{action.id}/{raw_event.id}",
+                        event=raw_event,
+                        action=action,
+                    )
                     await self._queue_repository.push(
                         topic=task_repositories.JobTopic.EVENT,
-                        item=task_job_models.EventJob(
-                            id=f"{task_id}/{trigger.id}/{action.id}/{raw_event.id}",
-                            event=raw_event,
-                            action=action,
-                        ),
+                        item=event_job,
                     )
+                    logger.info("EventJob(%s) was spawned", event_job.id)
         finally:
             await trigger_processor.dispose()
 
