@@ -71,12 +71,32 @@ class Application:
         # Services
 
         logger.info("Initializing services")
-        queue_state_service = task_services.QueueStateService(
+        task_queue_state_service = task_services.QueueStateService(
             queue_repository=queue_repository,
             state_repository=state_repository,
-            task_queue_mode=settings.tasks.task_processor.queue_state_mode,
-            trigger_queue_mode=settings.tasks.trigger_processor.queue_state_mode,
-            event_queue_mode=settings.tasks.event_processor.queue_state_mode,
+            job_topic=task_repositories.JobTopic.TASK,
+            failed_job_topic=task_repositories.JobTopic.FAILED_TASK,
+            job_model=task_jobs.TaskJob,
+            queue_mode=settings.tasks.task_processor.queue_state_mode,
+            failed_queue_mode=settings.tasks.task_processor.failed_queue_state_mode,
+        )
+        trigger_queue_state_service = task_services.QueueStateService(
+            queue_repository=queue_repository,
+            state_repository=state_repository,
+            job_topic=task_repositories.JobTopic.TRIGGER,
+            failed_job_topic=task_repositories.JobTopic.FAILED_TRIGGER,
+            job_model=task_jobs.TriggerJob,
+            queue_mode=settings.tasks.trigger_processor.queue_state_mode,
+            failed_queue_mode=settings.tasks.trigger_processor.failed_queue_state_mode,
+        )
+        event_queue_state_service = task_services.QueueStateService(
+            queue_repository=queue_repository,
+            state_repository=state_repository,
+            job_topic=task_repositories.JobTopic.EVENT,
+            failed_job_topic=task_repositories.JobTopic.FAILED_EVENT,
+            job_model=task_jobs.EventJob,
+            queue_mode=settings.tasks.event_processor.queue_state_mode,
+            failed_queue_mode=settings.tasks.event_processor.failed_queue_state_mode,
         )
 
         # Jobs
@@ -121,11 +141,26 @@ class Application:
         # Startup
         lifecycle_manager.add_startup_callback(
             callback=lifecycle_manager_utils.StartupCallback(
-                callback=queue_state_service.load(),
-                error_message="Failed to load job topic state",
-                success_message="Topic jobs state have been loaded successfully",
+                callback=task_queue_state_service.load(),
+                error_message="Failed to load Task JobTopic state",
+                success_message="Task JobTopic state have been loaded successfully",
             )
         )
+        lifecycle_manager.add_startup_callback(
+            callback=lifecycle_manager_utils.StartupCallback(
+                callback=trigger_queue_state_service.load(),
+                error_message="Failed to load Trigger JobTopic state",
+                success_message="Trigger JobTopic state have been loaded successfully",
+            )
+        )
+        lifecycle_manager.add_startup_callback(
+            callback=lifecycle_manager_utils.StartupCallback(
+                callback=event_queue_state_service.load(),
+                error_message="Failed to load Event JobTopic state",
+                success_message="Event JobTopic state have been loaded successfully",
+            )
+        )
+
         lifecycle_manager.add_startup_callback(
             callback=lifecycle_manager_utils.StartupCallback(
                 callback=aiojobs_scheduler.spawn_deferred_jobs(),
@@ -142,9 +177,23 @@ class Application:
         )
         lifecycle_manager.add_shutdown_callback(
             callback=lifecycle_manager_utils.ShutdownCallback(
-                callback=queue_state_service.dump(),
+                callback=task_queue_state_service.dump(),
                 error_message="Failed to dump job topic state",
                 success_message="Topic jobs state have been dumped successfully",
+            )
+        )
+        lifecycle_manager.add_shutdown_callback(
+            callback=lifecycle_manager_utils.ShutdownCallback(
+                callback=trigger_queue_state_service.dump(),
+                error_message="Failed to dump trigger topic state",
+                success_message="Trigger jobs state have been dumped successfully",
+            )
+        )
+        lifecycle_manager.add_shutdown_callback(
+            callback=lifecycle_manager_utils.ShutdownCallback(
+                callback=event_queue_state_service.dump(),
+                error_message="Failed to dump event topic state",
+                success_message="Event jobs state have been dumped successfully",
             )
         )
         lifecycle_manager.add_shutdown_callback(

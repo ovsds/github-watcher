@@ -38,7 +38,10 @@ class JobProcessorSettings(pydantic_settings.BaseSettings):
     count: int = 5
     max_retries: int = 3
     queue_state_mode: task_services.JobProcessorQueueStateMode = pydantic.Field(
-        default=task_services.JobProcessorQueueStateMode.RESTART_ALL
+        default=task_services.JobProcessorQueueStateMode.RESTART
+    )
+    failed_queue_state_mode: task_services.JobProcessorQueueStateMode = pydantic.Field(
+        default=task_services.JobProcessorQueueStateMode.PRESERVE
     )
 
 

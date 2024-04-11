@@ -9,8 +9,7 @@ import lib.utils.json as json_utils
 class JobProcessorQueueStateMode(str, enum.Enum):
     PRESERVE = "preserve"
     RESTART = "restart"
-    RESTART_ALL = "restart_all"
-    NONE = "none"
+    IGNORE = "ignore"
 
 
 logger = logging.getLogger(__name__)
@@ -21,50 +20,43 @@ class QueueStateService:
         self,
         queue_repository: task_repositories.QueueRepositoryProtocol,
         state_repository: task_repositories.StateRepositoryProtocol,
-        task_queue_mode: JobProcessorQueueStateMode,
-        trigger_queue_mode: JobProcessorQueueStateMode,
-        event_queue_mode: JobProcessorQueueStateMode,
+        job_topic: task_repositories.JobTopic,
+        failed_job_topic: task_repositories.JobTopic,
+        job_model: type[task_jobs.BaseJob],
+        queue_mode: JobProcessorQueueStateMode,
+        failed_queue_mode: JobProcessorQueueStateMode,
     ):
         self._queue_repository = queue_repository
         self._state_repository = state_repository
-        self._task_queue_mode = task_queue_mode
-        self._trigger_queue_mode = trigger_queue_mode
-        self._event_queue_mode = event_queue_mode
+
+        self._job_topic = job_topic
+        self._failed_job_topic = failed_job_topic
+        self._job_model = job_model
+        self._queue_mode = queue_mode
+        self._failed_queue_mode = failed_queue_mode
 
     async def dump(self) -> None:
-        if self._task_queue_mode != JobProcessorQueueStateMode.NONE:
-            await self._dump_topic(topic=task_repositories.JobTopic.TASK)
-            await self._dump_topic(topic=task_repositories.JobTopic.FAILED_TASK)
-
-        if self._trigger_queue_mode != JobProcessorQueueStateMode.NONE:
-            await self._dump_topic(topic=task_repositories.JobTopic.TRIGGER)
-            await self._dump_topic(topic=task_repositories.JobTopic.FAILED_TRIGGER)
-
-        if self._event_queue_mode != JobProcessorQueueStateMode.NONE:
-            await self._dump_topic(topic=task_repositories.JobTopic.EVENT)
-            await self._dump_topic(topic=task_repositories.JobTopic.FAILED_EVENT)
+        await self._dump_topic(topic=self._job_topic)
+        await self._dump_topic(topic=self._failed_job_topic)
 
     async def load(self):
-        await self._load_job_topics(
-            queue_mode=self._task_queue_mode,
-            topic=task_repositories.JobTopic.TASK,
-            failed_topic=task_repositories.JobTopic.FAILED_TASK,
-            model=task_jobs.TaskJob,
-        )
+        if self._queue_mode == JobProcessorQueueStateMode.PRESERVE:
+            await self._load_topic(topic=self._job_topic)
+        elif self._queue_mode == JobProcessorQueueStateMode.RESTART:
+            await self._load_topic(topic=self._job_topic, reset_retry_count=True)
+        elif self._queue_mode == JobProcessorQueueStateMode.IGNORE:
+            logger.info("Ignoring Topic(%s) state", self._job_topic)
 
-        await self._load_job_topics(
-            queue_mode=self._trigger_queue_mode,
-            topic=task_repositories.JobTopic.TRIGGER,
-            failed_topic=task_repositories.JobTopic.FAILED_TRIGGER,
-            model=task_jobs.TriggerJob,
-        )
-
-        await self._load_job_topics(
-            queue_mode=self._event_queue_mode,
-            topic=task_repositories.JobTopic.EVENT,
-            failed_topic=task_repositories.JobTopic.FAILED_EVENT,
-            model=task_jobs.EventJob,
-        )
+        if self._failed_queue_mode == JobProcessorQueueStateMode.PRESERVE:
+            await self._load_topic(topic=self._failed_job_topic)
+        elif self._failed_queue_mode == JobProcessorQueueStateMode.RESTART:
+            await self._load_topic(
+                topic=self._failed_job_topic,
+                reset_retry_count=True,
+                state_path=self._get_default_state_path(topic=self._job_topic),
+            )
+        elif self._failed_queue_mode == JobProcessorQueueStateMode.IGNORE:
+            logger.info("Ignoring Topic(%s) state", self._failed_job_topic)
 
     def _get_default_state_path(self, topic: task_repositories.JobTopic) -> str:
         return f"topics/{topic.value}"
@@ -94,32 +86,9 @@ class QueueStateService:
         await self._state_repository.set(state_path, {"jobs": jobs})
         logger.info("%s jobs dumped from Topic(%s)", len(jobs), topic)
 
-    async def _load_job_topics(
-        self,
-        queue_mode: JobProcessorQueueStateMode,
-        topic: task_repositories.JobTopic,
-        failed_topic: task_repositories.JobTopic,
-        model: type[task_jobs.BaseJob],
-    ):
-        if queue_mode == JobProcessorQueueStateMode.PRESERVE:
-            await self._load_topic(topic=topic, model=model)
-            await self._load_topic(topic=failed_topic, model=model)
-        elif queue_mode == JobProcessorQueueStateMode.RESTART:
-            await self._load_topic(topic=topic, model=model, reset_retry_count=True)
-            await self._load_topic(topic=failed_topic, model=model)
-        elif queue_mode == JobProcessorQueueStateMode.RESTART_ALL:
-            await self._load_topic(topic=topic, model=model, reset_retry_count=True)
-            await self._load_topic(
-                topic=topic,
-                model=model,
-                reset_retry_count=True,
-                state_path=self._get_default_state_path(topic=failed_topic),
-            )
-
     async def _load_topic(
         self,
         topic: task_repositories.JobTopic,
-        model: type[task_jobs.BaseJob],
         state_path: str | None = None,
         reset_retry_count: bool = False,
     ) -> None:
@@ -140,7 +109,7 @@ class QueueStateService:
 
         for raw_job in raw_jobs:
             assert isinstance(raw_job, dict)
-            job = model.load(raw_job, reset_retry_count=reset_retry_count)
+            job = self._job_model.load(raw_job, reset_retry_count=reset_retry_count)
             await self._queue_repository.push(topic=topic, item=job)
 
         logger.info("%s jobs loaded to Topic(%s)", len(raw_jobs), topic)
