@@ -1,0 +1,39 @@
+version: 3
+
+vars:
+  PENV: .venv
+
+silent: true
+
+tasks:
+  init:
+    desc: Initialize environment
+    cmds:
+      - echo 'Installing python dependencies...'
+      - poetry install --no-root
+
+  lint:
+    desc: Lint
+    cmds:
+      - echo 'Running poetry checks...'
+      - poetry check --lock
+
+  lint-fix:
+    desc: Lint fix
+    cmds:
+      - echo 'Running poetry autofixes...'
+      - poetry lock --no-update
+      - poetry check
+
+  clean:
+    desc: Clean environment
+    cmds:
+      - echo 'Cleaning python dependencies...'
+      - rm -rf {{.PENV}}
+
+  dependencies-update:
+    desc: Update dependencies
+    cmds:
+      - echo 'Updating python dependencies...'
+      - poetry update
+      - poetry show --outdated

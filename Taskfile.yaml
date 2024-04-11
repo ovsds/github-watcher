@@ -3,6 +3,10 @@ version: 3
 silent: true
 
 includes:
+  scripts:
+    taskfile: ./.scripts
+    dir: ./.scripts
+
   backend:
     taskfile: ./backend
     dir: ./backend
@@ -40,6 +44,9 @@ tasks:
       - echo 'Installing poetry version...'
       - poetry self update {{.POETRY_TARGET_VERSION}}
 
+      - echo 'Installing .scripts dependencies...'
+      - task: scripts:init
+
       - for: { var: SERVICES, as: SERVICE }
         task: "{{.SERVICE}}:init"
     vars:
@@ -53,6 +60,9 @@ tasks:
       - task: _prettier
         vars: { COMMAND: "--check ." }
 
+      - echo 'Linting .scripts'
+      - task: scripts:lint
+
       - for: { var: SERVICES, as: SERVICE }
         task: "{{.SERVICE}}:lint"
 
@@ -62,6 +72,9 @@ tasks:
       - echo 'Running prettier fixes...'
       - task: _prettier
         vars: { COMMAND: "--write ." }
+
+      - echo 'Fixing .scripts'
+      - task: scripts:lint-fix
 
       - for: { var: SERVICES, as: SERVICE }
         task: "{{.SERVICE}}:lint-fix"
@@ -78,6 +91,9 @@ tasks:
       - echo 'Cleaning node dependencies...'
       - rm -rf {{.NENV}}
 
+      - echo 'Cleaning .scripts dependencies...'
+      - task: scripts:clean
+
       - for: { var: SERVICES, as: SERVICE }
         task: "{{.SERVICE}}:clean"
 
@@ -91,6 +107,9 @@ tasks:
         vars: { COMMAND: "npm outdated" }
       - task: _with_nvm
         vars: { COMMAND: "npm audit" }
+
+      - echo 'Updating .scripts dependencies...'
+      - task: scripts:dependencies-update
 
       - for: { var: SERVICES, as: SERVICE }
         task: "{{.SERVICE}}:dependencies-update"

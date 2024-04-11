@@ -12,6 +12,9 @@ vars:
 
   IMAGE_NAME: github-watcher
 
+env:
+  GITHUB_WATCHER_SETTINGS_YAML: example/settings.yaml
+
 tasks:
   _python:
     internal: true
