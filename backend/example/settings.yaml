@@ -1,3 +1,5 @@
+app:
+  debug: true
 logs:
   level: DEBUG
 tasks:

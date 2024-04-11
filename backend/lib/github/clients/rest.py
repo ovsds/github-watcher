@@ -38,7 +38,7 @@ ResponseT = typing.TypeVar("ResponseT", bound=BaseResponse)
 @dataclasses.dataclass
 class GetRepositoryWorkflowRunsRequest(BaseRequest):
     owner: str
-    repo: str
+    repository: str
     created_after: datetime.datetime
     per_page: int = 100
     page: int = 1
@@ -47,7 +47,7 @@ class GetRepositoryWorkflowRunsRequest(BaseRequest):
 
     @property
     def url(self) -> str:
-        return f"https://api.github.com/repos/{self.owner}/{self.repo}/actions/runs"
+        return f"https://api.github.com/repos/{self.owner}/{self.repository}/actions/runs"
 
     @property
     def params(self) -> dict[str, typing.Any]:

@@ -3,6 +3,12 @@ import datetime
 
 
 @dataclasses.dataclass
+class Repository:
+    owner: str
+    name: str
+
+
+@dataclasses.dataclass
 class Issue:
     id: str
     author: str | None
@@ -30,3 +36,11 @@ class WorkflowRun:
     status: str
     conclusion: str | None
     created_at: datetime.datetime
+
+
+__all__ = [
+    "Issue",
+    "PullRequest",
+    "Repository",
+    "WorkflowRun",
+]

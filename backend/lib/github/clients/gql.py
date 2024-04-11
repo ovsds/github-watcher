@@ -37,9 +37,73 @@ ResponseT = typing.TypeVar("ResponseT", bound=BaseResponse)
 
 
 @dataclasses.dataclass
+class GetRepositoriesRequest(BaseRequest):
+    owner: str
+    limit: int = 100
+    after: str | None = None
+
+    document: graphql.DocumentNode = gql.gql(
+        """
+        query myOrgRepos($query: String!, $limit: Int!, $after: String) {
+            search(query: $query, type: REPOSITORY, first: $limit, after: $after) {
+                nodes {
+                    ... on Repository {
+                        name
+                        owner {
+                            login
+                        }
+                    }
+                }
+                pageInfo {
+                    endCursor
+                    hasNextPage
+                }
+            }
+        }
+        """
+    )
+
+    @property
+    def params(self) -> dict[str, typing.Any]:
+        return {
+            "query": f"org:{self.owner}",
+            "limit": self.limit,
+            "after": self.after,
+        }
+
+
+class GetRepositoriesResponse(BaseResponse):
+    class Search(BaseModel):
+        class Repository(BaseModel):
+            class Owner(BaseModel):
+                login: str
+
+            name: str
+            owner: Owner
+
+        class PageInfo(BaseModel):
+            end_cursor: str
+            has_next_page: bool
+
+        nodes: list[Repository]
+        page_info: PageInfo
+
+    search: Search
+
+    def to_dataclass(self) -> list[github_models.Repository]:
+        return [
+            github_models.Repository(
+                name=repository.name,
+                owner=repository.owner.login,
+            )
+            for repository in self.search.nodes
+        ]
+
+
+@dataclasses.dataclass
 class GetRepositoryIssuesRequest(BaseRequest):
     owner: str
-    repo: str
+    repository: str
     created_after: datetime.datetime
     limit: int = 100
 
@@ -67,7 +131,7 @@ class GetRepositoryIssuesRequest(BaseRequest):
     @property
     def params(self) -> dict[str, typing.Any]:
         query = [
-            f"repo:{self.owner}/{self.repo}",
+            f"repo:{self.owner}/{self.repository}",
             "is:issue",
             f"created:>{self.created_after.isoformat()}",
             "sort:created-asc",
@@ -112,7 +176,7 @@ class GetRepositoryIssuesResponse(BaseResponse):
 @dataclasses.dataclass
 class GetRepositoryPRsRequest(BaseRequest):
     owner: str
-    repo: str
+    repository: str
     created_after: datetime.datetime
     limit: int = 100
 
@@ -140,7 +204,7 @@ class GetRepositoryPRsRequest(BaseRequest):
     @property
     def params(self) -> dict[str, typing.Any]:
         query = [
-            f"repo:{self.owner}/{self.repo}",
+            f"repo:{self.owner}/{self.repository}",
             "is:pr",
             f"created:>{self.created_after.isoformat()}",
             "sort:created-asc",
@@ -212,6 +276,20 @@ class GqlGithubClient:
 
         return parsed_response
 
+    async def get_repositories(
+        self,
+        request: GetRepositoriesRequest,
+    ) -> list[github_models.Repository]:
+        result: list[github_models.Repository] = []
+        while True:
+            response = await self._request(request, GetRepositoriesResponse)
+            result.extend(response.to_dataclass())
+            if not response.search.page_info.has_next_page:
+                break
+            request.after = response.search.page_info.end_cursor
+
+        return result
+
     async def get_repository_issues(
         self,
         request: GetRepositoryIssuesRequest,
@@ -228,6 +306,7 @@ class GqlGithubClient:
 
 
 __all__ = [
+    "GetRepositoriesRequest",
     "GetRepositoryIssuesRequest",
     "GetRepositoryPRsRequest",
     "GqlGithubClient",

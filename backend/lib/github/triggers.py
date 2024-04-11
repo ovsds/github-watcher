@@ -2,6 +2,7 @@ import contextlib
 import datetime
 import logging
 import typing
+import warnings
 
 import pydantic
 
@@ -86,7 +87,9 @@ class RepositoryFailedWorkflowRunSubtriggerConfig(SubtriggerConfig):
 class GithubTriggerConfig(task_base.BaseTriggerConfig):
     token_secret: task_base.SecretConfigPydanticAnnotation
     owner: str
-    repos: list[str]
+    repos: list[str] = pydantic.Field(default_factory=list)  # TODO v1.0.0: remove
+    include_repos: list[str] = pydantic.Field(default_factory=list)
+    exclude_repos: list[str] = pydantic.Field(default_factory=list)
     default_timedelta_seconds: int = 60 * 60 * 24  # 1 day
     subtriggers: typing.Annotated[
         list[pydantic.SerializeAsAny[SubtriggerConfig]],
@@ -97,6 +100,29 @@ class GithubTriggerConfig(task_base.BaseTriggerConfig):
     @property
     def default_timedelta(self) -> datetime.timedelta:
         return datetime.timedelta(seconds=self.default_timedelta_seconds)
+
+    @pydantic.field_validator("repos", mode="after")
+    @classmethod
+    def check_repos(cls, v: list[str]) -> list[str]:
+        if len(v) > 0:
+            warnings.warn(
+                "`repos` field is deprecated in GithubTriggerConfig, use include_repos instead. "
+                "`repos` will be removed in v1.0.0",
+                FutureWarning,
+            )
+        return v
+
+    @property
+    def _include_repos(self) -> list[str]:
+        return list(set(self.repos) | set(self.include_repos))
+
+    def is_repository_applicable(self, repository: github_models.Repository) -> bool:
+        if self._include_repos and repository.name not in self._include_repos:
+            return False
+        if repository.name in self.exclude_repos:
+            return False
+
+        return True
 
 
 class RepositoryIssueCreatedState(pydantic_utils.BaseModel):
@@ -181,9 +207,20 @@ class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
                 await self._raw_state.set(state.model_dump(mode="json"))
 
     async def produce_events(self) -> typing.AsyncGenerator[task_base.Event, None]:
+        repositories = await self._gql_github_client.get_repositories(
+            github_clients.GetRepositoriesRequest(
+                owner=self._config.owner,
+            )
+        )
+        repositories = [repository for repository in repositories if self._config.is_repository_applicable(repository)]
+
         async with self._acquire_state() as state:
             async for event in asyncio_utils.GatherIterators(
-                self._process_subtrigger_factory(subtrigger=subtrigger, state=state)
+                self._process_subtrigger_factory(
+                    subtrigger=subtrigger,
+                    state=state,
+                    repositories=repositories,
+                )
                 for subtrigger in self._config.subtriggers
             ):
                 yield event
@@ -192,13 +229,26 @@ class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
         self,
         subtrigger: SubtriggerConfig,
         state: GithubTriggerState,
+        repositories: list[github_models.Repository],
     ) -> typing.AsyncGenerator[task_base.Event, None]:
         if isinstance(subtrigger, RepositoryIssueCreatedSubtriggerConfig):
-            return self._process_all_repository_issue_created(state=state, subtrigger=subtrigger)
+            return self._process_all_repository_issue_created(
+                state=state,
+                subtrigger=subtrigger,
+                repositories=repositories,
+            )
         if isinstance(subtrigger, RepositoryPRCreatedSubtriggerConfig):
-            return self._process_all_repository_pr_created(state=state, subtrigger=subtrigger)
+            return self._process_all_repository_pr_created(
+                state=state,
+                subtrigger=subtrigger,
+                repositories=repositories,
+            )
         if isinstance(subtrigger, RepositoryFailedWorkflowRunSubtriggerConfig):
-            return self._process_all_repository_failed_workflow_run(state=state, subtrigger=subtrigger)
+            return self._process_all_repository_failed_workflow_run(
+                state=state,
+                subtrigger=subtrigger,
+                repositories=repositories,
+            )
 
         raise ValueError(f"Unknown subtrigger: {subtrigger}")
 
@@ -206,14 +256,15 @@ class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
         self,
         state: GithubTriggerState,
         subtrigger: RepositoryIssueCreatedSubtriggerConfig,
+        repositories: list[github_models.Repository],
     ) -> typing.AsyncGenerator[task_base.Event, None]:
         async for event in asyncio_utils.GatherIterators(
             self._process_repository_issue_created(
                 state=state,
                 subtrigger=subtrigger,
-                repo=repo,
+                repository=repository.name,
             )
-            for repo in self._config.repos
+            for repository in repositories
         ):
             yield event
 
@@ -221,20 +272,20 @@ class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
         self,
         state: GithubTriggerState,
         subtrigger: RepositoryIssueCreatedSubtriggerConfig,
-        repo: str,
+        repository: str,
     ) -> typing.AsyncGenerator[task_base.Event, None]:
-        if repo not in state.repository_issue_created:
-            state.repository_issue_created[repo] = RepositoryIssueCreatedState.default_factory(
+        if repository not in state.repository_issue_created:
+            state.repository_issue_created[repository] = RepositoryIssueCreatedState.default_factory(
                 self._config.default_timedelta,
             )
-        repository_state = state.repository_issue_created[repo]
+        repository_state = state.repository_issue_created[repository]
         last_issue_created = repository_state.last_issue_created
 
         while True:
             issues = await self._gql_github_client.get_repository_issues(
                 github_clients.GetRepositoryIssuesRequest(
                     owner=self._config.owner,
-                    repo=repo,
+                    repository=repository,
                     created_after=last_issue_created,
                 )
             )
@@ -245,7 +296,7 @@ class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
                 if subtrigger.is_applicable(issue):
                     yield task_base.Event(
                         id=f"issue_created__{issue.id}",
-                        title=f"📋New issue in {self._config.owner}/{repo}",
+                        title=f"📋New issue in {self._config.owner}/{repository}",
                         body=f"Issue created by {issue.author}: {issue.title}",
                         url=issue.url,
                     )
@@ -256,14 +307,15 @@ class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
         self,
         state: GithubTriggerState,
         subtrigger: RepositoryPRCreatedSubtriggerConfig,
+        repositories: list[github_models.Repository],
     ) -> typing.AsyncGenerator[task_base.Event, None]:
         async for event in asyncio_utils.GatherIterators(
             self._process_repository_pr_created(
                 state=state,
                 subtrigger=subtrigger,
-                repo=repo,
+                repository=repository.name,
             )
-            for repo in self._config.repos
+            for repository in repositories
         ):
             yield event
 
@@ -271,20 +323,20 @@ class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
         self,
         state: GithubTriggerState,
         subtrigger: RepositoryPRCreatedSubtriggerConfig,
-        repo: str,
+        repository: str,
     ) -> typing.AsyncGenerator[task_base.Event, None]:
-        if repo not in state.repository_pr_created:
-            state.repository_pr_created[repo] = RepositoryPRCreatedState.default_factory(
+        if repository not in state.repository_pr_created:
+            state.repository_pr_created[repository] = RepositoryPRCreatedState.default_factory(
                 self._config.default_timedelta,
             )
-        repository_state = state.repository_pr_created[repo]
+        repository_state = state.repository_pr_created[repository]
         last_pr_created = repository_state.last_pr_created
 
         while True:
             prs = await self._gql_github_client.get_repository_pull_requests(
                 github_clients.GetRepositoryPRsRequest(
                     owner=self._config.owner,
-                    repo=repo,
+                    repository=repository,
                     created_after=last_pr_created,
                 )
             )
@@ -295,7 +347,7 @@ class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
                 if subtrigger.is_applicable(pr):
                     yield task_base.Event(
                         id=f"pr_created__{pr.id}",
-                        title=f"🛠New PR in {self._config.owner}/{repo}",
+                        title=f"🛠New PR in {self._config.owner}/{repository}",
                         body=f"PR created by {pr.author}: {pr.title}",
                         url=pr.url,
                     )
@@ -306,14 +358,15 @@ class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
         self,
         state: GithubTriggerState,
         subtrigger: RepositoryFailedWorkflowRunSubtriggerConfig,
+        repositories: list[github_models.Repository],
     ) -> typing.AsyncGenerator[task_base.Event, None]:
         async for event in asyncio_utils.GatherIterators(
             self._process_repository_failed_workflow_run(
                 state=state,
                 subtrigger=subtrigger,
-                repo=repo,
+                repository=repository.name,
             )
-            for repo in self._config.repos
+            for repository in repositories
         ):
             yield event
 
@@ -321,17 +374,17 @@ class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
         self,
         state: GithubTriggerState,
         subtrigger: RepositoryFailedWorkflowRunSubtriggerConfig,
-        repo: str,
+        repository: str,
     ) -> typing.AsyncGenerator[task_base.Event, None]:
-        if repo not in state.repository_failed_workflow_run:
-            state.repository_failed_workflow_run[repo] = RepositoryFailedWorkflowRunState.default_factory(
+        if repository not in state.repository_failed_workflow_run:
+            state.repository_failed_workflow_run[repository] = RepositoryFailedWorkflowRunState.default_factory(
                 self._config.default_timedelta,
             )
-        repository_state = state.repository_failed_workflow_run[repo]
+        repository_state = state.repository_failed_workflow_run[repository]
 
         request = github_clients.GetRepositoryWorkflowRunsRequest(
             owner=self._config.owner,
-            repo=repo,
+            repository=repository,
             created_after=repository_state.oldest_incomplete_created,
         )
 
@@ -344,8 +397,8 @@ class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
                 and workflow_run not in repository_state.already_reported_failed_runs
             ):
                 yield task_base.Event(
-                    id=f"failed_workflow_run__{self._config.owner}__{repo}__{workflow_run.id}",
-                    title=f"🔥Failed workflow run in {self._config.owner}/{repo}",
+                    id=f"failed_workflow_run__{self._config.owner}__{repository}__{workflow_run.id}",
+                    title=f"🔥Failed workflow run in {self._config.owner}/{repository}",
                     body=f"Workflow run {workflow_run.name} failed",
                     url=workflow_run.url,
                 )
@@ -373,4 +426,5 @@ class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
 
 __all__ = [
     "GithubTriggerConfig",
+    "GithubTriggerProcessor",
 ]
