@@ -57,7 +57,7 @@ class EventProcessorJob(aiojobs_utils.RepeatableJob):
                     raise
                 else:
                     await self._queue_repository.consume(topic=task_repositories.JobTopic.EVENT, item=event_job)
-                    logger.debug("EventJob(%s) has been processed", event_job.id)
+                    logger.info("EventJob(%s) has been processed", event_job.id)
         except task_repositories.QueueRepositoryProtocol.TopicFinished:
             logger.debug("Event queue is closed, finishing job")
             self.finish()
