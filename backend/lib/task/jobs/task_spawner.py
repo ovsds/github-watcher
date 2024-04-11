@@ -39,7 +39,7 @@ class TaskSpawnerJob(aiojobs_utils.OneShotJob):
 
             logger.debug("Task(%s) was spawned", task.id)
 
-        logger.debug("All tasks have been spawned, closing task topic")
+        logger.info("All tasks have been spawned, closing task topic")
         await self._queue_repository.close_topic(task_repositories.JobTopic.TASK)
 
 
