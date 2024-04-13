@@ -10,9 +10,5 @@ __pycache__/
 /.coverage
 htmlcov/
 
-# Environment variables
-.env
-.secrets
-
 # Local app state
 example/state

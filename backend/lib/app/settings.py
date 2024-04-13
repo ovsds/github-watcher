@@ -12,9 +12,7 @@ import lib.utils.logging as logging_utils
 
 
 class AppSettings(pydantic_settings.BaseSettings):
-    env: str = "development"
-    name: str = "github-watcher-backend"
-    version: str = "0.0.1"
+    env: str = "production"
     debug: bool = False
 
     @property
@@ -34,11 +32,26 @@ class LoggingSettings(pydantic_settings.BaseSettings):
     format: str = "%(asctime)s | %(name)s | %(levelname)s | %(message)s"
 
 
+class SchedulerSettings(pydantic_settings.BaseSettings):
+    limit: int = 100
+    pending_limit: int = 0  # 0 means no limit
+    timeout: int = 10 * 60  # 10 minutes, 0 means no timeout
+    close_timeout: int = 10
+
+    @property
+    def aiojobs_scheduler_settings(self) -> aiojobs_utils.Settings:
+        return aiojobs_utils.Settings(
+            limit=self.limit,
+            pending_limit=self.pending_limit,
+            close_timeout=self.close_timeout,
+        )
+
+
 class JobProcessorSettings(pydantic_settings.BaseSettings):
     count: int = 5
     max_retries: int = 3
     queue_state_mode: task_services.JobProcessorQueueStateMode = pydantic.Field(
-        default=task_services.JobProcessorQueueStateMode.RESTART
+        default=task_services.JobProcessorQueueStateMode.PRESERVE
     )
     failed_queue_state_mode: task_services.JobProcessorQueueStateMode = pydantic.Field(
         default=task_services.JobProcessorQueueStateMode.PRESERVE
@@ -46,16 +59,6 @@ class JobProcessorSettings(pydantic_settings.BaseSettings):
 
 
 class TasksSettings(pydantic_settings.BaseSettings):
-    scheduler_limit: int = 100
-    scheduler_pending_limit: int = 0  # 0 means no limit
-
-    task_processor: JobProcessorSettings = pydantic.Field(default_factory=JobProcessorSettings)
-    trigger_processor: JobProcessorSettings = pydantic.Field(default_factory=JobProcessorSettings)
-    event_processor: JobProcessorSettings = pydantic.Field(default_factory=JobProcessorSettings)
-
-    timeout: int = 10 * 60  # 10 minutes
-    close_timeout: int = 10
-
     config_backend: typing.Annotated[
         task_repositories.BaseConfigSettings,
         pydantic.BeforeValidator(task_repositories.BaseConfigSettings.factory),
@@ -69,13 +72,10 @@ class TasksSettings(pydantic_settings.BaseSettings):
         pydantic.BeforeValidator(task_repositories.BaseStateSettings.factory),
     ] = NotImplemented
 
-    @property
-    def aiojobs_scheduler_settings(self) -> aiojobs_utils.Settings:
-        return aiojobs_utils.Settings(
-            limit=self.scheduler_limit,
-            pending_limit=self.scheduler_pending_limit,
-            close_timeout=self.close_timeout,
-        )
+    scheduler: SchedulerSettings = pydantic.Field(default_factory=SchedulerSettings)
+    task_processor: JobProcessorSettings = pydantic.Field(default_factory=JobProcessorSettings)
+    trigger_processor: JobProcessorSettings = pydantic.Field(default_factory=JobProcessorSettings)
+    event_processor: JobProcessorSettings = pydantic.Field(default_factory=JobProcessorSettings)
 
 
 class Settings(pydantic_settings.BaseSettings):

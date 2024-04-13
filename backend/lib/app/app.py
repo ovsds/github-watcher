@@ -51,7 +51,9 @@ class Application:
 
         logger.info("Initializing application")
 
-        aiojobs_scheduler = aiojobs_utils.Scheduler.from_settings(settings=settings.tasks.aiojobs_scheduler_settings)
+        aiojobs_scheduler = aiojobs_utils.Scheduler.from_settings(
+            settings=settings.tasks.scheduler.aiojobs_scheduler_settings
+        )
 
         # Clients
 
@@ -244,7 +246,7 @@ class Application:
             raise app_errors.ServerRuntimeError("Application runtime error") from unexpected_error
 
     async def _start(self) -> None:
-        timer = asyncio_utils.TimeoutTimer(timeout=self._settings.tasks.timeout)
+        timer = asyncio_utils.TimeoutTimer(timeout=self._settings.tasks.scheduler.timeout)
 
         while not timer.is_expired:
             all_topics_finished = all(
