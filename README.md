@@ -46,3 +46,7 @@ More information can be found in [backend/README.md](backend/README.md).
 ### Taskfile commands
 
 For all commands see [Taskfile](Taskfile.yaml) or `task --list-all`.
+
+## License
+
+[MIT](LICENSE)
