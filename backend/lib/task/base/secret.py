@@ -13,7 +13,7 @@ class BaseSecretConfig(pydantic_utils.BaseModel):
     type: str
 
     @classmethod
-    def factory(cls, v: typing.Any, info: pydantic.ValidationInfo) -> "BaseSecretConfig[typing.Any]":
+    def factory(cls, v: typing.Any, info: pydantic.ValidationInfo) -> "BaseSecretConfig":
         return action_config_factory(v)
 
     @property

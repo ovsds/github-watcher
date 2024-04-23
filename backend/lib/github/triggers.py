@@ -87,7 +87,7 @@ class RepositoryFailedWorkflowRunSubtriggerConfig(SubtriggerConfig):
 class GithubTriggerConfig(task_base.BaseTriggerConfig):
     token_secret: task_base.SecretConfigPydanticAnnotation
     owner: str
-    repos: list[str] = pydantic.Field(default_factory=list)  # TODO v1.0.0: remove
+    repos: list[str] = pydantic.Field(default_factory=list)  # TODO 1.0.0: remove
     include_repos: list[str] = pydantic.Field(default_factory=list)
     exclude_repos: list[str] = pydantic.Field(default_factory=list)
     default_timedelta_seconds: int = 60 * 60 * 24  # 1 day
@@ -107,7 +107,7 @@ class GithubTriggerConfig(task_base.BaseTriggerConfig):
         if len(v) > 0:
             warnings.warn(
                 "`repos` field is deprecated in GithubTriggerConfig, use include_repos instead. "
-                "`repos` will be removed in v1.0.0",
+                "`repos` will be removed in 1.0.0",
                 FutureWarning,
             )
         return v

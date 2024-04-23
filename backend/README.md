@@ -221,18 +221,45 @@ Config can be set by yaml file, [example](example/config.yaml) when using `yaml_
 
 ```yaml
 tasks:
-  - id:
+  - id: ...
+    type: ...
     triggers: ...
     actions: ...
 ```
 
-Task config consists of two main sections:
+Task config consists of next sections:
 
-- id - task id, used for task identification
+- id - task id.
+- type - task type.
 - triggers - list of triggers.
   Currently, only [github](docs/configs/triggers/github.md) trigger is supported.
 - actions - list of actions.
   Currently, only [telegram_webhook](docs/configs/actions/telegram_webhook.md) action is supported.
+
+#### Once per run type
+
+`type: once_per_run` - task will be executed only once per run.
+
+```yaml
+tasks:
+  - id: example_task
+    type: once_per_run
+    ...
+```
+
+#### Cron type
+
+`type: cron` - task will be executed according to cron schedule.
+
+```yaml
+tasks:
+  - id: example_task
+    type: cron
+    cron: "0 0 * * *"
+    ...
+```
+
+- `cron` - cron schedule string. Use [crontab.guru](https://crontab.guru/) to generate cron schedule.
 
 ## Development
 
