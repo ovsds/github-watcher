@@ -109,6 +109,7 @@ class Application:
             task_jobs.TaskSpawnerJob(
                 config_repository=config_repository,
                 queue_repository=queue_repository,
+                state_repository=state_repository,
             ),
             *(
                 task_jobs.TaskProcessorJob(

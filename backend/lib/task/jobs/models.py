@@ -27,7 +27,7 @@ class BaseJob(pydantic_utils.BaseModel, pydantic_utils.IDMixinModel):
 
 
 class TaskJob(BaseJob):
-    task: task_base.TaskConfig
+    task: task_base.TaskConfigPydanticAnnotation
 
 
 class TriggerJob(BaseJob):
