@@ -7,6 +7,7 @@ import lib.task.base as task_base
 import lib.task.jobs.models as task_jobs_models
 import lib.task.repositories as task_repositories
 import lib.utils.aiojobs as aiojobs_utils
+import lib.utils.json as json_utils
 import lib.utils.pydantic as pydantic_utils
 
 logger = logging.getLogger(__name__)
@@ -25,13 +26,13 @@ class CronTaskState(pydantic_utils.BaseModel):
     last_run: datetime.datetime | None = None
 
     @classmethod
-    def from_raw(cls, raw: dict[str, typing.Any] | None) -> "CronTaskState":
+    def from_raw(cls, raw: json_utils.JsonSerializableDict | None) -> typing.Self:
         if raw is None:
             return cls()
 
         return cls.model_validate(raw)
 
-    def to_raw(self) -> dict[str, typing.Any]:
+    def to_raw(self) -> json_utils.JsonSerializableDict:
         return self.model_dump(mode="json")
 
 

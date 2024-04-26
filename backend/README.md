@@ -194,7 +194,7 @@ Can be set by `GITHUB_WATCHER_TASKS__[...]_PROCESSOR__MAX_RETRIES` environment v
 ---
 
 `tasks.[...]_processor.queue_state_mode` - queue state mode, sets queue state handling mode.
-Can be one of `preserve`, `restart`, `ignore`. Default is `preserve`.
+Can be one of `load`, `load_restart`, `accumulate` and `ignore`. Default is `load`.
 
 ```yaml
 tasks:
@@ -207,7 +207,8 @@ Can be set by `GITHUB_WATCHER_TASKS__[...]_PROCESSOR__QUEUE_STATE_MODE` environm
 ---
 
 `tasks.[...]_processor.failed_queue_state_mode` - failed queue state mode,
-sets queue state handling mode for failed jobs. Can be one of `preserve`, `restart`, `ignore`. Default is `preserve`.
+sets queue state handling mode for failed jobs.
+Can be one of `load`, `load_restart`, `accumulate` and `ignore`. Default is `accumulate`.
 
 ```yaml
 tasks:

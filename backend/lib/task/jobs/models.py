@@ -15,15 +15,15 @@ class BaseJob(pydantic_utils.BaseModel, pydantic_utils.IDMixinModel):
     def copy_retry(self) -> typing.Self:
         return self.model_copy(update={"retry_count": self.retry_count + 1})
 
-    def dump(self) -> json_utils.JsonSerializableDict:
+    def to_raw(self) -> json_utils.JsonSerializableDict:
         return self.model_dump(mode="json")
 
     @classmethod
-    def load(cls, value: json_utils.JsonSerializableDict, reset_retry_count: bool = False) -> typing.Self:
+    def from_raw(cls, raw: json_utils.JsonSerializableDict, reset_retry_count: bool = False) -> typing.Self:
         if reset_retry_count:
-            value["retry_count"] = 0
+            raw["retry_count"] = 0
 
-        return cls.model_validate(obj=value)
+        return cls.model_validate(obj=raw)
 
 
 class TaskJob(BaseJob):
