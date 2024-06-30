@@ -1,6 +1,7 @@
 import contextlib
 import datetime
 import logging
+import re
 import typing
 import warnings
 
@@ -9,7 +10,7 @@ import pydantic
 import lib.github.clients as github_clients
 import lib.github.models as github_models
 import lib.task.base as task_base
-import lib.task.repositories as task_repositories
+import lib.task.protocols
 import lib.utils.asyncio as asyncio_utils
 import lib.utils.pydantic as pydantic_utils
 
@@ -41,14 +42,70 @@ class SubtriggerConfig(pydantic_utils.BaseModel, pydantic_utils.IDMixinModel):
         raise ValueError(f"Unknown subtrigger type: {v['type']}")
 
 
+def _check_match(string: str, items: list[str] | None = None) -> bool:
+    return items is not None and len(items) != 0 and string in items
+
+
+def _check_regex_match(string: str, regex_items: list[str] | None = None) -> bool:
+    return regex_items is not None and len(regex_items) != 0 and any(re.match(regex, string) for regex in regex_items)
+
+
+def _check_included(
+    string: str,
+    include: list[str] | None = None,
+    include_regex: list[str] | None = None,
+) -> bool:
+    return (
+        (not include and not include_regex)
+        or _check_match(string, include)
+        or _check_regex_match(string, include_regex)
+    )
+
+
+def _check_excluded(
+    string: str,
+    exclude: list[str] | None = None,
+    exclude_regex: list[str] | None = None,
+) -> bool:
+    return _check_match(string, exclude) or _check_regex_match(string, exclude_regex)
+
+
+def _check_applicable(
+    string: str,
+    include: list[str] | None = None,
+    exclude: list[str] | None = None,
+    include_regex: list[str] | None = None,
+    exclude_regex: list[str] | None = None,
+) -> bool:
+    return _check_included(string, include=include, include_regex=include_regex) and not _check_excluded(
+        string, exclude=exclude, exclude_regex=exclude_regex
+    )
+
+
 class RepositoryIssueCreatedSubtriggerConfig(SubtriggerConfig):
+    type: str = "repository_issue_created"
+
     include_author: list[str] = pydantic.Field(default_factory=list)
     exclude_author: list[str] = pydantic.Field(default_factory=list)
+    include_title: list[str] = pydantic.Field(default_factory=list)
+    exclude_title: list[str] = pydantic.Field(default_factory=list)
+    include_title_regex: list[str] = pydantic.Field(default_factory=list)
+    exclude_title_regex: list[str] = pydantic.Field(default_factory=list)
 
     def is_applicable(self, issue: github_models.Issue) -> bool:
-        if self.include_author and issue.author not in self.include_author:
+        if issue.author is not None and not _check_applicable(
+            issue.author,
+            include=self.include_author,
+            exclude=self.exclude_author,
+        ):
             return False
-        if issue.author in self.exclude_author:
+        if not _check_applicable(
+            issue.title,
+            include=self.include_title,
+            exclude=self.exclude_title,
+            include_regex=self.include_title_regex,
+            exclude_regex=self.exclude_title_regex,
+        ):
             return False
 
         return True
@@ -59,9 +116,11 @@ class RepositoryPRCreatedSubtriggerConfig(SubtriggerConfig):
     exclude_author: list[str] = pydantic.Field(default_factory=list)
 
     def is_applicable(self, pr: github_models.PullRequest) -> bool:
-        if self.include_author and pr.author not in self.include_author:
-            return False
-        if pr.author in self.exclude_author:
+        if pr.author is not None and _check_applicable(
+            pr.author,
+            include=self.include_author,
+            exclude=self.exclude_author,
+        ):
             return False
 
         return True
@@ -76,9 +135,11 @@ class RepositoryFailedWorkflowRunSubtriggerConfig(SubtriggerConfig):
             return False
         if workflow_run.conclusion != "failure":
             return False
-        if self.include and workflow_run.name not in self.include:
-            return False
-        if workflow_run.name in self.exclude:
+        if not _check_applicable(
+            workflow_run.name,
+            include=self.include,
+            exclude=self.exclude,
+        ):
             return False
 
         return True
@@ -165,7 +226,7 @@ class GithubTriggerState(pydantic_utils.BaseModel):
 class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
     def __init__(
         self,
-        raw_state: task_repositories.StateProtocol,
+        raw_state: lib.task.protocols.StateProtocol,
         gql_github_client: github_clients.GqlGithubClient,
         rest_github_client: github_clients.RestGithubClient,
         config: GithubTriggerConfig,
@@ -179,7 +240,7 @@ class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
     def from_config(
         cls,
         config: GithubTriggerConfig,
-        state: task_repositories.StateProtocol,
+        state: lib.task.protocols.StateProtocol,
     ) -> typing.Self:
         gql_github_client = github_clients.GqlGithubClient(token=config.token_secret.value)
         rest_github_client = github_clients.RestGithubClient.from_token(token=config.token_secret.value)
@@ -427,4 +488,5 @@ class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
 __all__ = [
     "GithubTriggerConfig",
     "GithubTriggerProcessor",
+    "RepositoryIssueCreatedSubtriggerConfig",
 ]

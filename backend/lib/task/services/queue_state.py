@@ -3,6 +3,7 @@ import logging
 import typing
 
 import lib.task.jobs as task_jobs
+import lib.task.protocols as task_protocols
 import lib.task.repositories as task_repositories
 import lib.utils.json as json_utils
 import lib.utils.pydantic as pydantic_utils
@@ -51,7 +52,7 @@ class QueueStateService:
     def __init__(
         self,
         queue_repository: task_repositories.QueueRepositoryProtocol,
-        state_repository: task_repositories.StateRepositoryProtocol,
+        state_repository: task_protocols.StateRepositoryProtocol,
         job_topic: task_repositories.JobTopic,
         failed_job_topic: task_repositories.JobTopic,
         job_model: type[task_jobs.BaseJob],

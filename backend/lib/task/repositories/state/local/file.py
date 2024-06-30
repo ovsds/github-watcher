@@ -5,6 +5,7 @@ import typing
 
 import aiofile
 
+import lib.task.protocols as task_protocols
 import lib.task.repositories.state.base as state_base
 import lib.utils.asyncio as asyncio_utils
 import lib.utils.json as json_utils
@@ -25,7 +26,7 @@ class LocalDirStateRepository(state_base.BaseStateRepository[LocalDirStateSettin
     def from_settings(cls, settings: LocalDirStateSettings) -> typing.Self:
         return cls(root_path=settings.path)
 
-    async def get(self, path: str) -> state_base.StateData | None:
+    async def get(self, path: str) -> task_protocols.StateData | None:
         logger.debug("Loading State(%s)", path)
         try:
             async with aiofile.async_open(f"{self._root_path}/{path}.json", "r") as file:
@@ -39,7 +40,7 @@ class LocalDirStateRepository(state_base.BaseStateRepository[LocalDirStateSettin
             logger.debug("No State(%s) was found", path)
             return None
 
-    async def set(self, path: str, value: state_base.StateData) -> None:
+    async def set(self, path: str, value: task_protocols.StateData) -> None:
         logger.debug("Saving State(%s)", path)
         self._root_path.joinpath(path).parent.mkdir(parents=True, exist_ok=True)
 
@@ -54,7 +55,7 @@ class LocalDirStateRepository(state_base.BaseStateRepository[LocalDirStateSettin
             pass
 
     @contextlib.asynccontextmanager
-    async def acquire(self, path: str) -> typing.AsyncIterator[state_base.StateData | None]:
+    async def acquire(self, path: str) -> typing.AsyncIterator[task_protocols.StateData | None]:
         async with asyncio_utils.acquire_file_lock(f"{self._root_path}/{path}.lock"):
             logger.debug("Acquired lock for State(%s)", path)
             yield await self.get(path)
