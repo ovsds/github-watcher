@@ -2,6 +2,7 @@ import logging
 
 import lib.task.base as task_base
 import lib.task.jobs.models as task_job_models
+import lib.task.protocols as task_protocols
 import lib.task.repositories as task_repositories
 import lib.utils.aiojobs as aiojobs_utils
 
@@ -17,7 +18,7 @@ class TriggerProcessorJob(aiojobs_utils.RepeatableJob):
         job_id: int,
         max_retries: int,
         queue_repository: task_repositories.QueueRepositoryProtocol,
-        state_repository: task_repositories.StateRepositoryProtocol,
+        state_repository: task_protocols.StateRepositoryProtocol,
     ):
         self._id = job_id
         self._max_retries = max_retries

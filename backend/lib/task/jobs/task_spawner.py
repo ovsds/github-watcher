@@ -5,6 +5,7 @@ import typing
 
 import lib.task.base as task_base
 import lib.task.jobs.models as task_jobs_models
+import lib.task.protocols as task_protocols
 import lib.task.repositories as task_repositories
 import lib.utils.aiojobs as aiojobs_utils
 import lib.utils.json as json_utils
@@ -41,7 +42,7 @@ class TaskSpawnerJob(aiojobs_utils.RepeatableJob):
         self,
         config_repository: task_repositories.ConfigRepositoryProtocol,
         queue_repository: task_repositories.QueueRepositoryProtocol,
-        state_repository: task_repositories.StateRepositoryProtocol,
+        state_repository: task_protocols.StateRepositoryProtocol,
     ) -> None:
         self._config_repository = config_repository
         self._queue_repository = queue_repository

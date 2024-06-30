@@ -9,7 +9,7 @@ import pydantic
 import lib.github.clients as github_clients
 import lib.github.models as github_models
 import lib.task.base as task_base
-import lib.task.repositories as task_repositories
+import lib.task.protocols
 import lib.utils.asyncio as asyncio_utils
 import lib.utils.pydantic as pydantic_utils
 
@@ -42,6 +42,8 @@ class SubtriggerConfig(pydantic_utils.BaseModel, pydantic_utils.IDMixinModel):
 
 
 class RepositoryIssueCreatedSubtriggerConfig(SubtriggerConfig):
+    type: str = "repository_issue_created"
+
     include_author: list[str] = pydantic.Field(default_factory=list)
     exclude_author: list[str] = pydantic.Field(default_factory=list)
 
@@ -165,7 +167,7 @@ class GithubTriggerState(pydantic_utils.BaseModel):
 class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
     def __init__(
         self,
-        raw_state: task_repositories.StateProtocol,
+        raw_state: lib.task.protocols.StateProtocol,
         gql_github_client: github_clients.GqlGithubClient,
         rest_github_client: github_clients.RestGithubClient,
         config: GithubTriggerConfig,
@@ -179,7 +181,7 @@ class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
     def from_config(
         cls,
         config: GithubTriggerConfig,
-        state: task_repositories.StateProtocol,
+        state: lib.task.protocols.StateProtocol,
     ) -> typing.Self:
         gql_github_client = github_clients.GqlGithubClient(token=config.token_secret.value)
         rest_github_client = github_clients.RestGithubClient.from_token(token=config.token_secret.value)

@@ -5,7 +5,7 @@ import typing
 import pydantic
 
 import lib.task.base as task_base
-import lib.task.repositories.state as task_state_repositories
+import lib.task.protocols as task_protocols
 import lib.utils.pydantic as pydantic_utils
 
 
@@ -43,7 +43,7 @@ class TriggerProcessor(typing.Generic[ConfigT], abc.ABC):
     def from_config(
         cls,
         config: ConfigT,
-        state: task_state_repositories.StateProtocol,
+        state: task_protocols.StateProtocol,
     ) -> typing.Self: ...
 
     async def produce_events(self) -> typing.AsyncGenerator[task_base.Event, None]: ...
@@ -81,7 +81,7 @@ def trigger_config_factory(data: typing.Any) -> BaseTriggerConfig:
 
 def trigger_processor_factory(
     config: BaseTriggerConfig,
-    state: task_state_repositories.StateProtocol,
+    state: task_protocols.StateProtocol,
 ) -> TriggerProcessorProtocol:
     processor_class = _REGISTRY[config.type].processor_class
     return processor_class.from_config(config=config, state=state)

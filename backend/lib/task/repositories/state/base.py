@@ -6,33 +6,7 @@ import typing
 import pydantic
 import pydantic_settings
 
-import lib.utils.json as json_utils
-
-StateData = json_utils.JsonSerializableDict
-
-
-class StateProtocol(typing.Protocol):
-    async def get(self) -> StateData | None: ...
-
-    async def set(self, value: StateData) -> None: ...
-
-    async def clear(self) -> None: ...
-
-    def acquire(self) -> typing.AsyncContextManager[StateData | None]: ...
-
-
-class StateRepositoryProtocol(typing.Protocol):
-    async def dispose(self) -> None: ...
-
-    async def get(self, path: str) -> StateData | None: ...
-
-    async def set(self, path: str, value: StateData) -> None: ...
-
-    async def clear(self, path: str) -> None: ...
-
-    def acquire(self, path: str) -> typing.AsyncContextManager[StateData | None]: ...
-
-    async def get_state(self, path: str) -> StateProtocol: ...
+import lib.task.protocols as task_protocols
 
 
 class BaseStateSettings(pydantic_settings.BaseSettings):
@@ -47,21 +21,21 @@ SettingsT = typing.TypeVar("SettingsT", bound=BaseStateSettings)
 
 
 class State:
-    def __init__(self, repository: StateRepositoryProtocol, path: str):
+    def __init__(self, repository: task_protocols.StateRepositoryProtocol, path: str):
         self._repository = repository
         self._path = path
 
-    async def get(self) -> StateData | None:
+    async def get(self) -> task_protocols.StateData | None:
         return await self._repository.get(self._path)
 
-    async def set(self, value: StateData) -> None:
+    async def set(self, value: task_protocols.StateData) -> None:
         await self._repository.set(self._path, value)
 
     async def clear(self) -> None:
         await self._repository.clear(self._path)
 
     @contextlib.asynccontextmanager
-    async def acquire(self) -> typing.AsyncIterator[StateData | None]:
+    async def acquire(self) -> typing.AsyncIterator[task_protocols.StateData | None]:
         async with self._repository.acquire(self._path) as state:
             yield state
 
@@ -74,17 +48,17 @@ class BaseStateRepository(typing.Generic[SettingsT], abc.ABC):
     async def dispose(self) -> None: ...
 
     @abc.abstractmethod
-    async def get(self, path: str) -> StateData | None: ...
+    async def get(self, path: str) -> task_protocols.StateData | None: ...
 
     @abc.abstractmethod
-    async def set(self, path: str, value: StateData) -> None: ...
+    async def set(self, path: str, value: task_protocols.StateData) -> None: ...
 
     async def clear(self, path: str) -> None: ...
 
     @abc.abstractmethod
-    def acquire(self, path: str) -> typing.AsyncContextManager[StateData | None]: ...
+    def acquire(self, path: str) -> typing.AsyncContextManager[task_protocols.StateData | None]: ...
 
-    async def get_state(self, path: str) -> StateProtocol:
+    async def get_state(self, path: str) -> task_protocols.StateProtocol:
         return State(repository=self, path=path)
 
 
@@ -117,7 +91,7 @@ def state_settings_factory(data: typing.Any) -> BaseStateSettings:
     return settings_class.model_validate(data)
 
 
-def state_repository_factory(settings: BaseStateSettings) -> StateRepositoryProtocol:
+def state_repository_factory(settings: BaseStateSettings) -> task_protocols.StateRepositoryProtocol:
     repository_class = _REGISTRY[settings.type].repository_class
     return repository_class.from_settings(settings)
 
@@ -125,9 +99,6 @@ def state_repository_factory(settings: BaseStateSettings) -> StateRepositoryProt
 __all__ = [
     "BaseStateRepository",
     "BaseStateSettings",
-    "StateData",
-    "StateProtocol",
-    "StateRepositoryProtocol",
     "register_state_backend",
     "state_repository_factory",
     "state_settings_factory",
