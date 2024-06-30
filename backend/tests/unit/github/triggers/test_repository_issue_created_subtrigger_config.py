@@ -65,3 +65,94 @@ def test_is_applicable_include_and_exclude_author(issue: github_models.Issue):
         exclude_author=["test_author"],
     )
     assert not config.is_applicable(issue=issue)
+
+
+def test_is_applicable_include_title(issue: github_models.Issue):
+    config = github_triggers.RepositoryIssueCreatedSubtriggerConfig(
+        id="test_id",
+        include_title=["test_title"],
+    )
+    assert config.is_applicable(issue=issue)
+
+
+def test_is_applicable_include_title_not_matching(issue: github_models.Issue):
+    config = github_triggers.RepositoryIssueCreatedSubtriggerConfig(
+        id="test_id",
+        include_title=["other_title"],
+    )
+    assert not config.is_applicable(issue=issue)
+
+
+def test_is_applicable_exclude_title(issue: github_models.Issue):
+    config = github_triggers.RepositoryIssueCreatedSubtriggerConfig(
+        id="test_id",
+        exclude_title=["other_title"],
+    )
+    assert config.is_applicable(issue=issue)
+
+
+def test_is_applicable_exclude_title_matching(issue: github_models.Issue):
+    config = github_triggers.RepositoryIssueCreatedSubtriggerConfig(
+        id="test_id",
+        exclude_title=["test_title"],
+    )
+    assert not config.is_applicable(issue=issue)
+
+
+def test_is_applicable_include_and_exclude_title(issue: github_models.Issue):
+    config = github_triggers.RepositoryIssueCreatedSubtriggerConfig(
+        id="test_id",
+        include_title=["test_title"],
+        exclude_title=["test_title"],
+    )
+    assert not config.is_applicable(issue=issue)
+
+
+def test_is_applicable_include_regex_title(issue: github_models.Issue):
+    config = github_triggers.RepositoryIssueCreatedSubtriggerConfig(
+        id="test_id",
+        include_title_regex=["test_.*"],
+    )
+    assert config.is_applicable(issue=issue)
+
+
+def test_is_applicable_include_regex_title_not_matching(issue: github_models.Issue):
+    config = github_triggers.RepositoryIssueCreatedSubtriggerConfig(
+        id="test_id",
+        include_title_regex=["other_.*"],
+    )
+    assert not config.is_applicable(issue=issue)
+
+
+def test_is_applicable_exclude_regex_title(issue: github_models.Issue):
+    config = github_triggers.RepositoryIssueCreatedSubtriggerConfig(
+        id="test_id",
+        exclude_title_regex=["other_.*"],
+    )
+    assert config.is_applicable(issue=issue)
+
+
+def test_is_applicable_exclude_regex_title_matching(issue: github_models.Issue):
+    config = github_triggers.RepositoryIssueCreatedSubtriggerConfig(
+        id="test_id",
+        exclude_title_regex=["test_.*"],
+    )
+    assert not config.is_applicable(issue=issue)
+
+
+def test_is_applicable_include_and_exclude_regex_title(issue: github_models.Issue):
+    config = github_triggers.RepositoryIssueCreatedSubtriggerConfig(
+        id="test_id",
+        include_title_regex=["test_.*"],
+        exclude_title_regex=["test_.*"],
+    )
+    assert not config.is_applicable(issue=issue)
+
+
+def test_is_applicable_include_and_include_regex_title(issue: github_models.Issue):
+    config = github_triggers.RepositoryIssueCreatedSubtriggerConfig(
+        id="test_id",
+        include_title=["other_title"],
+        include_title_regex=["test_.*"],
+    )
+    assert config.is_applicable(issue=issue)
