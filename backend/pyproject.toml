@@ -29,7 +29,7 @@ py_version = 312
 [tool.poetry]
 authors = ["ovsds <github@ovsds.ru>"]
 description = "Github Watcher Backend"
-name = "github-watcher-backend"
+name = "github-watcher"
 version = "0.0.1"
 
 [tool.poetry.dependencies]

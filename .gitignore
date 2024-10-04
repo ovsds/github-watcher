@@ -5,16 +5,8 @@
 .idea/
 .vscode/
 
-# Logs
-*.log
-
-# Artifacts
-*.whl
-
 # Dependencies
-.venv/
 node_modules/
 
-# Python cache
-__pycache__/
-.pytest_cache/
+# Environment
+.env
