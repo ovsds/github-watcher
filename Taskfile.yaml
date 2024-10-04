@@ -6,7 +6,6 @@ includes:
   scripts:
     taskfile: ./.scripts
     dir: ./.scripts
-
   backend:
     taskfile: ./backend
     dir: ./backend
@@ -78,6 +77,8 @@ tasks:
   test:
     desc: Test project
     cmds:
+      - echo 'Running tests...'
+
       - for: { var: SERVICES, as: SERVICE }
         task: "{{.SERVICE}}:test"
 
@@ -125,5 +126,6 @@ tasks:
         owner_name="Dmitry Ovsiannikov"
         owner_github_login="ovsds"
         scripts="true"
+        services="backend"
     vars:
       TEMPLATE_PATH: '{{.TEMPLATE_PATH | default "https://github.com/ovsds/template-repository"}}'

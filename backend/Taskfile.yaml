@@ -3,14 +3,15 @@ version: 3
 silent: true
 
 vars:
-  PENV: .venv
+  ROOT_NENV: "../node_modules"
+  PENV: ".venv"
 
-  SOURCE_FOLDERS: bin lib tests
-  TOML_FILES: pyproject.toml poetry.toml
+  SOURCE_FOLDERS: "bin lib tests"
+  TOML_FILES: "pyproject.toml poetry.toml"
   PYTHON_FILES:
     sh: find {{.SOURCE_FOLDERS}} -name '*.py' | tr '\n' ' '
 
-  IMAGE_NAME: github-watcher
+  IMAGE_NAME: "github-watcher"
 
 env:
   GITHUB_WATCHER_SETTINGS_YAML: example/settings.yaml
@@ -24,7 +25,7 @@ tasks:
   _pyright:
     internal: true
     cmds:
-      - "../node_modules/.bin/pyright {{.COMMAND}}"
+      - "{{.ROOT_NENV}}/.bin/pyright {{.COMMAND}}"
 
   _toml-sort:
     internal: true
@@ -193,7 +194,7 @@ tasks:
       - echo 'Starting server...'
       - "{{.PENV}}/bin/python -m bin.main"
 
-  dev-server-container-start:
+  dev-server-start-container:
     desc: Start development application in container
     cmds:
       - task: image-build
@@ -203,18 +204,20 @@ tasks:
       - docker run
         {{.IMAGE_NAME}}:runtime
 
-  ci-init:
-    desc: CI-specific environment initialization
+  update-from-template:
+    desc: Update project from template
     cmds:
-      - echo 'Installing python dependencies...'
-      - poetry install
-        --no-root
-        --with dev
-
-  ci-test:
-    desc: CI-specific test run
-    cmds:
-      - task: test-container
+      - echo 'Updating project from template...'
+      - cookiecutter
+        --no-input
+        --overwrite-if-exists
+        --output-dir ../
+        {{.TEMPLATE_PATH}}
+        service_name="Github Watcher Backend"
+        service_slug="github-watcher"
+        service_short_slug="backend"
+    vars:
+      TEMPLATE_PATH: '{{.TEMPLATE_PATH | default "https://github.com/ovsds/template-service-python"}}'
 
   ci-image-build:
     desc: Build image target for CI usage

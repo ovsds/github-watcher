@@ -29,6 +29,7 @@ jobs:
         run: |
           task lint
 
-      - name: Test PR
+      - name: Test backend in container
+        working-directory: backend
         run: |
-          task test
+          task test-container

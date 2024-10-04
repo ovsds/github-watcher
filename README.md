@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/ovsds/github-watcher/workflows/Check%20PR/badge.svg)](https://github.com/ovsds/github-watcher/actions?query=workflow%3A%22%22Check+PR%22%22)
 
-GitHub Watcher is an easy-to-use extendable framework for setting up custom reactions on various triggers.
+Github Watcher is an easy-to-use extendable framework for setting up custom reactions on various triggers.
 
 ### Supported triggers
 
