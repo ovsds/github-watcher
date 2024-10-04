@@ -38,6 +38,11 @@ tasks:
     vars:
       IGNORE_ERRORS: '{{.IGNORE_ERRORS | default "true"}}'
 
+  _deptry:
+    internal: true
+    cmds:
+      - "{{.PENV}}/bin/deptry {{.COMMAND}}"
+
   init:
     desc: Initialize environment
     cmds:
@@ -51,6 +56,10 @@ tasks:
     cmds:
       - echo 'Running poetry checks...'
       - poetry check --lock
+
+      - echo 'Running deptry checks...'
+      - task: _deptry
+        vars: { COMMAND: "." }
 
       - echo 'Running black checks...'
       - task: _python
@@ -80,6 +89,10 @@ tasks:
       - echo 'Running poetry fixes...'
       - poetry lock --no-update
       - poetry check
+
+      - echo 'Running deptry checks...'
+      - task: _deptry
+        vars: { COMMAND: "." }
 
       - echo 'Running black fixes...'
       - task: _python
