@@ -23,7 +23,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          task ci-init
+          task init
 
       - name: Lint PR
         run: |
@@ -31,4 +31,4 @@ jobs:
 
       - name: Test PR
         run: |
-          task ci-test
+          task test
