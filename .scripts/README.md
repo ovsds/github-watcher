@@ -6,9 +6,9 @@ Support scripts collection
 
 ### Global dependencies
 
-- [poetry](https://github.com/ovsds-personal/wiki/blob/master/src/global_dependencies/poetry/README.md)
-- [github-cli](https://github.com/ovsds-personal/wiki/blob/master/src/global_dependencies/github-cli/README.md)
-- [yacloud-cli](https://github.com/ovsds-personal/wiki/blob/master/src/global_dependencies/yacloud-cli/README.md)
+- poetry
+- github-cli
+- yacloud-cli
 
 ### Taskfile commands
 
