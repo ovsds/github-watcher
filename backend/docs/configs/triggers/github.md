@@ -26,6 +26,10 @@ Triggered when a new Issue is created in repository from trigger.
 - `type` - sub-trigger type, should be `repository_issue_created`.
 - `include_author` - list of authors to include.
 - `exclude_author` - list of authors to exclude.
+- `include_title` - list of titles to include.
+- `exclude_title` - list of titles to exclude.
+- `include_title_regex` - list of title regex checks to include.
+- `exclude_title_regex` - list of title regex checks to exclude.
 
 ### Repository PR created
 
