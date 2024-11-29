@@ -36,4 +36,9 @@ tasks:
     cmds:
       - echo 'Updating python dependencies...'
       - poetry update
+
+  dependencies-check:
+    desc: Check dependencies
+    cmds:
+      - echo 'Checking python dependencies...'
       - poetry show --outdated

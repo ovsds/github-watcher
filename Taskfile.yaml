@@ -36,17 +36,11 @@ tasks:
       - task: _with_nvm
         vars: { COMMAND: "npm run prepare" }
 
-      - echo 'Installing poetry version...'
-      - poetry self update {{.POETRY_TARGET_VERSION}}
-
       - echo 'Installing .scripts dependencies...'
       - task: scripts:init
 
       - for: { var: SERVICES, as: SERVICE }
         task: "{{.SERVICE}}:init"
-    vars:
-      POETRY_TARGET_VERSION:
-        sh: cat .poetry-version
 
   lint:
     desc: Lint project
@@ -100,16 +94,27 @@ tasks:
       - echo 'Updating node dependencies...'
       - task: _with_nvm
         vars: { COMMAND: "npm update" }
-      - task: _with_nvm
-        vars: { COMMAND: "npm outdated" }
-      - task: _with_nvm
-        vars: { COMMAND: "npm audit" }
 
       - echo 'Updating .scripts dependencies...'
       - task: scripts:dependencies-update
 
       - for: { var: SERVICES, as: SERVICE }
         task: "{{.SERVICE}}:dependencies-update"
+
+  dependencies-check:
+    desc: Check dependencies
+    cmds:
+      - echo 'Checking node dependencies...'
+      - task: _with_nvm
+        vars: { COMMAND: "npm outdated" }
+      - task: _with_nvm
+        vars: { COMMAND: "npm audit" }
+
+      - echo 'Checking .scripts dependencies...'
+      - task: scripts:dependencies-check
+
+      - for: { var: SERVICES, as: SERVICE }
+        task: "{{.SERVICE}}:dependencies-check"
 
   update-from-template:
     desc: Update project from template
@@ -120,12 +125,12 @@ tasks:
         --overwrite-if-exists
         --output-dir ../
         {{.TEMPLATE_PATH}}
-        project_name="Github Watcher"
-        project_slug="github-watcher"
-        node_version="v21.5.0"
-        owner_name="Dmitry Ovsiannikov"
-        owner_github_login="ovsds"
-        scripts="true"
-        services="backend"
+        project_name='Github Watcher'
+        project_slug='github-watcher'
+        node_version='v21.5.0'
+        owner_name='Dmitry Ovsiannikov'
+        owner_github_login='ovsds'
+        scripts='true'
+        services='backend'
     vars:
       TEMPLATE_PATH: '{{.TEMPLATE_PATH | default "https://github.com/ovsds/template-repository"}}'
