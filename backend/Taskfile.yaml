@@ -116,16 +116,26 @@ tasks:
 
   image-build:
     desc: Build image target for local usage
-    requires:
-      vars:
-        - TARGET
     cmds:
       - echo 'Building image {{.TARGET}} target...'
       - docker build
         --tag {{.IMAGE_NAME}}:{{.TARGET}}
         {{ if .TAG }}--tag {{.TAG}}{{ end }}
         --target {{.TARGET}}
+        --load
         .
+    vars:
+      TARGET: '{{.TARGET | default "runtime"}}'
+
+  image-scan:
+    desc: Scan image for vulnerabilities
+    cmds:
+      - echo 'Scanning image for vulnerabilities...'
+      - trivy image
+        --config trivy.yaml
+        {{.IMAGE_NAME}}:{{.TARGET}}
+    vars:
+      TARGET: '{{.TARGET | default "runtime"}}'
 
   test:
     desc: Run tests
@@ -245,3 +255,15 @@ tasks:
     cmds:
       - echo 'Uploading backend image...'
       - docker push {{.IMAGE_REGISTRY}}/{{.IMAGE_NAME}}:{{.IMAGE_TAG}}
+
+  ci-image-scan:
+    desc: Scan image for vulnerabilities
+    requires:
+      vars:
+        - IMAGE_TAG
+        - IMAGE_REGISTRY
+    cmds:
+      - echo 'Scanning image for vulnerabilities...'
+      - trivy image
+        --config trivy.yaml
+        {{.IMAGE_REGISTRY}}/{{.IMAGE_NAME}}:{{.IMAGE_TAG}}
