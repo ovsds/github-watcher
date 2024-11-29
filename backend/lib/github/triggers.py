@@ -112,11 +112,13 @@ class RepositoryIssueCreatedSubtriggerConfig(SubtriggerConfig):
 
 
 class RepositoryPRCreatedSubtriggerConfig(SubtriggerConfig):
+    type: str = "repository_pr_created"
+
     include_author: list[str] = pydantic.Field(default_factory=list)
     exclude_author: list[str] = pydantic.Field(default_factory=list)
 
     def is_applicable(self, pr: github_models.PullRequest) -> bool:
-        if pr.author is not None and _check_applicable(
+        if pr.author is not None and not _check_applicable(
             pr.author,
             include=self.include_author,
             exclude=self.exclude_author,
@@ -127,6 +129,8 @@ class RepositoryPRCreatedSubtriggerConfig(SubtriggerConfig):
 
 
 class RepositoryFailedWorkflowRunSubtriggerConfig(SubtriggerConfig):
+    type: str = "repository_failed_workflow_run"
+
     include: list[str] = pydantic.Field(default_factory=list)
     exclude: list[str] = pydantic.Field(default_factory=list)
 
