@@ -26,7 +26,7 @@ class Topic(asyncio.Queue[T]):
     def __init__(self, maxsize: int = 0):
         self._closed = asyncio.Event()
 
-        self._consumed_items: set[T] = set()
+        self._consumed_items: set[typing.Hashable] = set()
         super().__init__(maxsize=maxsize)
 
     async def close(self) -> None:
