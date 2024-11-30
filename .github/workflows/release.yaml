@@ -19,6 +19,9 @@ jobs:
 
       - name: Setup Environment
         uses: ./.github/actions/setup_environment
+        with:
+          with-python: "false"
+          with-poetry: "false"
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
