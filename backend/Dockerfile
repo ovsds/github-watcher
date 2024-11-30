@@ -23,11 +23,11 @@ COPY lib /opt/app/lib
 WORKDIR /opt/app
 CMD [".venv/bin/python", "-m", "bin.main"]
 
-FROM builder as builder_dev
+FROM builder AS builder_dev
 
 RUN poetry install --with dev
 
-FROM ${BASE_RUNTIME_IMAGE} as runtime_dev
+FROM ${BASE_RUNTIME_IMAGE} AS runtime_dev
 
 RUN mkdir --parents /opt/app
 COPY --from=builder_dev /opt/app/.venv /opt/app/.venv

@@ -6,6 +6,10 @@ inputs:
     description: "Task version"
     required: true
     default: "3.33.1"
+  trivy-version:
+    description: "Trivy version"
+    required: true
+    default: "v0.57.1"
   python-version:
     description: "Python version"
     required: true
@@ -22,6 +26,11 @@ runs:
       uses: arduino/setup-task@v1
       with:
         version: ${{ inputs.task-version }}
+
+    - name: Install Trivy
+      uses: aquasecurity/setup-trivy@v0.2.2
+      with:
+        version: ${{ inputs.trivy-version }}
 
     - name: Set up Python
       uses: actions/setup-python@v4
