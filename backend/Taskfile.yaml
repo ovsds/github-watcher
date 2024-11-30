@@ -267,3 +267,5 @@ tasks:
       - trivy image
         --config trivy.yaml
         {{.IMAGE_REGISTRY}}/{{.IMAGE_NAME}}:{{.IMAGE_TAG}}
+    env:
+      TRIVY_DISABLE_VEX_NOTICE: "true"

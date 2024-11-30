@@ -1,5 +1,5 @@
-ARG BASE_BUILDER_IMAGE=python:3.12.1
-ARG BASE_RUNTIME_IMAGE=python:3.12.1-slim
+ARG BASE_BUILDER_IMAGE=python:3.12.7-bookworm
+ARG BASE_RUNTIME_IMAGE=python:3.12.7-slim-bookworm
 
 FROM ${BASE_BUILDER_IMAGE} AS builder
 
