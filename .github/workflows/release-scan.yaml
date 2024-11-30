@@ -10,12 +10,19 @@ jobs:
   scan:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+      issues: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup Environment
         uses: ./.github/actions/setup_environment
+        with:
+          with-python: "false"
+          with-poetry: "false"
 
       - name: Get latest image tag
         id: get_tag
@@ -27,12 +34,14 @@ jobs:
 
       - name: Scan image for vulnerabilities
         id: scan
-        run: |
-          task backend:ci-image-scan
-        env:
-          IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
-          IMAGE_NAME: ${{ github.event.repository.name }}
-          IMAGE_TAG: ${{ steps.get_tag.outputs.release }}
+        uses: ovsds/run-with-output-action@v1
+        continue-on-error: true
+        with:
+          run: |
+            task backend:ci-image-scan \
+              IMAGE_REGISTRY="ghcr.io/${{ github.repository_owner }}" \
+              MAGE_NAME="${{ github.event.repository.name }}" \
+              IMAGE_TAG="${{ steps.get_tag.outputs.release }}"
 
       - name: Report vulnerabilities
         uses: ovsds/create-or-update-unique-issue-action@v1
