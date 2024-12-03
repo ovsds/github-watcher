@@ -40,7 +40,7 @@ jobs:
           run: |
             task backend:ci-image-scan \
               IMAGE_REGISTRY="ghcr.io/${{ github.repository_owner }}" \
-              MAGE_NAME="${{ github.event.repository.name }}" \
+              IMAGE_NAME="${{ github.event.repository.name }}" \
               IMAGE_TAG="${{ steps.get_tag.outputs.release }}"
 
       - name: Report vulnerabilities
