@@ -13,7 +13,6 @@ jobs:
 
     permissions:
       contents: read
-      pull-requests: write
 
     steps:
       - name: Checkout repository
@@ -34,27 +33,3 @@ jobs:
         working-directory: backend
         run: |
           task test-container
-
-      - name: Build backend image
-        working-directory: backend
-        run: |
-          task image-build
-
-      - name: Scan backend image
-        id: scan
-        uses: ovsds/run-with-output-action@v1
-        continue-on-error: true
-        with:
-          run: task backend:image-scan
-
-      - name: Report vulnerabilities
-        uses: ovsds/create-or-update-unique-comment-action@v1
-        with:
-          issue-number: ${{ github.event.number }}
-          body: |
-            ## Vulnerabilities found
-            ```
-            ${{ steps.scan.outputs.stdout }}
-            ```
-          unique-body-includes: "## Vulnerabilities found"
-          delete: ${{ steps.scan.outputs.exit_code == 0 }}

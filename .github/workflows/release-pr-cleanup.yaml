@@ -1,0 +1,23 @@
+name: 🧹 Release PR Cleanup
+
+on:
+  schedule:
+    - cron: 0 0 * * 0 # Every Sunday at 00:00 UTC
+  workflow_dispatch:
+
+jobs:
+  release-pr-cleanup:
+    runs-on: ubuntu-22.04
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: ovsds/package-lifecycle-action@v1
+        with:
+          package-name: ${{ github.event.repository.name }}-beta
+          expire-period-days: 7
+          untagged: true
+          retained-tagged-top: 1
+          github-token: ${{ secrets.GITHUB_TOKEN }}

@@ -38,10 +38,10 @@ jobs:
         continue-on-error: true
         with:
           run: |
-            task backend:ci-image-scan \
-              IMAGE_REGISTRY="ghcr.io/${{ github.repository_owner }}" \
-              IMAGE_NAME="${{ github.event.repository.name }}" \
-              IMAGE_TAG="${{ steps.get_tag.outputs.release }}"
+            IMAGE_REGISTRY="ghcr.io/${{ github.repository_owner }}" \
+            IMAGE_NAME="${{ github.event.repository.name }}" \
+            IMAGE_TAG="${{ steps.get_tag.outputs.release }}" \
+            task backend:ci-image-scan
 
       - name: Report vulnerabilities
         uses: ovsds/create-or-update-unique-issue-action@v1

@@ -1,0 +1,76 @@
+name: Release PR
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+jobs:
+  release-pr:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: write
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup_environment
+        with:
+          with-python: "false"
+          with-poetry: "false"
+
+      - name: Get Image Data
+        id: get-image-data
+        run: |
+          echo "registry=ghcr.io/${{ github.repository_owner }}" >> $GITHUB_OUTPUT
+          echo "name=${{ github.event.repository.name }}-beta" >> $GITHUB_OUTPUT
+          echo "tag=${{ github.event.number }}-${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Docker Builder
+        run: task configure-builder
+
+      - name: Build backend images
+        working-directory: backend
+        env:
+          IMAGE_REGISTRY: ${{ steps.get-image-data.outputs.registry }}
+          IMAGE_NAME: ${{ steps.get-image-data.outputs.name }}
+          IMAGE_TAG: ${{ steps.get-image-data.outputs.tag }}
+        run: |
+          task ci-image-push
+
+      - name: Scan backend image
+        id: scan
+        uses: ovsds/run-with-output-action@v1
+        continue-on-error: true
+        with:
+          run: |
+            IMAGE_REGISTRY="${{ steps.get-image-data.outputs.registry }}" \
+            IMAGE_NAME="${{ steps.get-image-data.outputs.name }}" \
+            IMAGE_TAG="${{ steps.get-image-data.outputs.tag }}" \
+            task backend:ci-image-scan
+
+      - name: Report vulnerabilities
+        uses: ovsds/create-or-update-unique-comment-action@v1
+        with:
+          issue-number: ${{ github.event.number }}
+          body: |
+            ## Vulnerabilities found
+            ```
+            ${{ steps.scan.outputs.stdout }}
+            ```
+          unique-body-includes: "## Vulnerabilities found"
+          delete: ${{ steps.scan.outputs.exit_code == 0 }}
