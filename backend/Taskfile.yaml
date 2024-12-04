@@ -11,7 +11,7 @@ vars:
   PYTHON_FILES:
     sh: find {{.SOURCE_FOLDERS}} -name '*.py' | tr '\n' ' '
 
-  IMAGE_NAME: "github-watcher"
+  DEFAULT_IMAGE_NAME: "github-watcher"
 
 env:
   GITHUB_WATCHER_SETTINGS_YAML: example/settings.yaml
@@ -114,18 +114,9 @@ tasks:
       - echo 'Running pyright fixes...'
       - task: _pyright
 
-  image-build:
-    desc: Build image target for local usage
+  bake:
     cmds:
-      - echo 'Building image {{.TARGET}} target...'
-      - docker build
-        --tag {{.IMAGE_NAME}}:{{.TARGET}}
-        {{ if .TAG }}--tag {{.TAG}}{{ end }}
-        --target {{.TARGET}}
-        --load
-        .
-    vars:
-      TARGET: '{{.TARGET | default "runtime"}}'
+      - docker buildx bake {{.COMMAND}}
 
   image-scan:
     desc: Scan image for vulnerabilities
@@ -133,7 +124,7 @@ tasks:
       - echo 'Scanning image for vulnerabilities...'
       - trivy image
         --config trivy.yaml
-        {{.IMAGE_NAME}}:{{.TARGET}}
+        {{.DEFAULT_IMAGE_NAME}}:{{.TARGET}}
     vars:
       TARGET: '{{.TARGET | default "runtime"}}'
 
@@ -146,12 +137,12 @@ tasks:
   test-container:
     desc: Run tests in container
     cmds:
-      - task: image-build
-        vars: { TARGET: tests }
+      - task: bake
+        vars: { COMMAND: tests_docker }
 
       - echo 'Running tests...'
       - docker run
-        {{.IMAGE_NAME}}:tests
+        {{.DEFAULT_IMAGE_NAME}}:tests
 
   test-coverage-run:
     desc: Run tests with coverage
@@ -212,12 +203,14 @@ tasks:
   dev-server-start-container:
     desc: Start development application in container
     cmds:
-      - task: image-build
-        vars: { TARGET: runtime }
+      - task: bake
+        vars: { COMMAND: runtime_docker }
 
       - echo 'Running container...'
       - docker run
-        {{.IMAGE_NAME}}:runtime
+        -e GITHUB_WATCHER_SETTINGS_YAML=example/settings.yaml
+        -v $(pwd)/example:/opt/app/example
+        {{.DEFAULT_IMAGE_NAME}}:runtime
 
   update-from-template:
     desc: Update project from template
@@ -234,18 +227,6 @@ tasks:
     vars:
       TEMPLATE_PATH: '{{.TEMPLATE_PATH | default "https://github.com/ovsds/template-service-python"}}'
 
-  ci-image-build:
-    desc: Build image target for CI usage
-    requires:
-      vars:
-        - IMAGE_TAG
-        - IMAGE_REGISTRY
-    cmds:
-      - task: image-build
-        vars:
-          TARGET: runtime
-          TAG: "{{.IMAGE_REGISTRY}}/{{.IMAGE_NAME}}:{{.IMAGE_TAG}}"
-
   ci-image-push:
     desc: Push image to registry for CI usage
     requires:
@@ -253,8 +234,8 @@ tasks:
         - IMAGE_TAG
         - IMAGE_REGISTRY
     cmds:
-      - echo 'Uploading backend image...'
-      - docker push {{.IMAGE_REGISTRY}}/{{.IMAGE_NAME}}:{{.IMAGE_TAG}}
+      - task: bake
+        vars: { COMMAND: runtime }
 
   ci-image-scan:
     desc: Scan image for vulnerabilities
@@ -262,8 +243,8 @@ tasks:
       vars:
         - IMAGE_TAG
         - IMAGE_REGISTRY
+        - IMAGE_NAME
     cmds:
-      - echo 'Scanning image for vulnerabilities...'
       - trivy image
         --config trivy.yaml
         {{.IMAGE_REGISTRY}}/{{.IMAGE_NAME}}:{{.IMAGE_TAG}}

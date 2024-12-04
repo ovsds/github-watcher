@@ -134,3 +134,11 @@ tasks:
         services='backend'
     vars:
       TEMPLATE_PATH: '{{.TEMPLATE_PATH | default "https://github.com/ovsds/template-repository"}}'
+
+  configure-builder:
+    desc: Configure buildx for multi-arch builds
+    cmds:
+      - echo 'Configuring buildx...'
+      - docker buildx create
+        --driver docker-container
+        --use
