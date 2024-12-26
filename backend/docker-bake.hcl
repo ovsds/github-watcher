@@ -31,17 +31,17 @@ target "runtime" {
   ]
 }
 
-target "runtime_docker" {
+target "runtime_dev" {
   inherits = ["base"]
-  target = "runtime"
+  target = "runtime_dev"
   output = ["type=docker"]
   tags = ["${IMAGE_NAME}:runtime"]
 }
 
-target "tests_docker" {
+target "tests_dev" {
   inherits = ["base"]
+  target = "tests_dev"
   output = ["type=docker"]
   tags = ["${IMAGE_NAME}:tests"]
-  target = "tests"
 }
 

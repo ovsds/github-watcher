@@ -13,8 +13,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout config file
         uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            commitlint.config.js
+          sparse-checkout-cone-mode: false
 
       - name: Commitlint PR Title
         uses: ovsds/commitlint-pr-title-action@v1

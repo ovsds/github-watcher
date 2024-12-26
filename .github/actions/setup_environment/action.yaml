@@ -6,48 +6,58 @@ inputs:
     description: "Task version"
     required: true
     default: "3.33.1"
-  trivy-version:
-    description: "Trivy version"
+  task-enabled:
+    description: "Task enabled"
     required: true
-    default: "v0.57.1"
+    default: "true"
   python-version:
     description: "Python version"
     required: true
     default: "3.12.1"
-  with-python:
-    description: "Python needed"
+  python-enabled:
+    description: "Python enabled"
     required: true
-    default: "true"
+    default: "false"
   poetry-version:
     description: "Poetry version"
     required: true
     default: "1.7.1"
-  with-poetry:
-    description: "Poetry needed"
+  poetry-enabled:
+    description: "Poetry enabled"
     required: true
-    default: "true"
+    default: "false"
+  trivy-version:
+    description: "Trivy version"
+    required: true
+    default: "v0.57.1"
+  trivy-enabled:
+    description: "Trivy enabled"
+    required: true
+    default: "false"
 
 runs:
   using: "composite"
   steps:
-    - name: Install Task
+    - name: Setup Task
+      if: ${{ inputs.task-enabled == 'true' }}
       uses: arduino/setup-task@v1
       with:
         version: ${{ inputs.task-version }}
 
-    - name: Install Trivy
-      uses: aquasecurity/setup-trivy@v0.2.2
-      with:
-        version: ${{ inputs.trivy-version }}
-
-    - name: Set up Python
-      if: ${{ inputs.with-python == 'true' }}
+    - name: Setup Python
+      if: ${{ inputs.python-enabled == 'true' }}
       uses: actions/setup-python@v4
       with:
         python-version: ${{ inputs.python-version }}
 
-    - name: Install and configure Poetry
-      if: ${{ inputs.with-poetry == 'true' }}
+    - name: Setup Poetry
+      if: ${{ inputs.poetry-enabled == 'true' }}
       uses: snok/install-poetry@v1
       with:
         version: ${{ inputs.poetry-version }}
+
+    - name: Setup Trivy
+      if: ${{ inputs.trivy-enabled == 'true' }}
+      uses: aquasecurity/setup-trivy@v0.2.2
+      with:
+        version: ${{ inputs.trivy-version }}

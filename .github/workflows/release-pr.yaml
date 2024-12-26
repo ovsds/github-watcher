@@ -23,8 +23,7 @@ jobs:
       - name: Setup Environment
         uses: ./.github/actions/setup_environment
         with:
-          with-python: "false"
-          with-poetry: "false"
+          trivy-enabled: true
 
       - name: Get Image Data
         id: get-image-data

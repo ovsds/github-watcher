@@ -114,9 +114,23 @@ tasks:
       - echo 'Running pyright fixes...'
       - task: _pyright
 
-  bake:
+  image-bake:
     cmds:
-      - docker buildx bake {{.COMMAND}}
+      - echo 'Building image {{.TARGET}}...'
+      - docker buildx bake {{.TARGET}}
+
+  image-run:
+    desc: Run image in container
+    requires:
+      vars:
+        - TARGET
+    cmds:
+      - echo 'Running image {{.TARGET}} target...'
+      - docker run
+        --env-file <( env| cut -f1 -d= )
+        --env GITHUB_WATCHER_SETTINGS_YAML=example/settings.yaml
+        --volume $(pwd)/example:/opt/app/example
+        {{.DEFAULT_IMAGE_NAME}}:{{.TARGET}}
 
   image-scan:
     desc: Scan image for vulnerabilities
@@ -137,12 +151,10 @@ tasks:
   test-container:
     desc: Run tests in container
     cmds:
-      - task: bake
-        vars: { COMMAND: tests_docker }
-
-      - echo 'Running tests...'
-      - docker run
-        {{.DEFAULT_IMAGE_NAME}}:tests
+      - task: image-bake
+        vars: { TARGET: tests_dev }
+      - task: image-run
+        vars: { TARGET: tests }
 
   test-coverage-run:
     desc: Run tests with coverage
@@ -203,14 +215,10 @@ tasks:
   dev-server-start-container:
     desc: Start development application in container
     cmds:
-      - task: bake
-        vars: { COMMAND: runtime_docker }
-
-      - echo 'Running container...'
-      - docker run
-        -e GITHUB_WATCHER_SETTINGS_YAML=example/settings.yaml
-        -v $(pwd)/example:/opt/app/example
-        {{.DEFAULT_IMAGE_NAME}}:runtime
+      - task: image-bake
+        vars: { TARGET: runtime_dev }
+      - task: image-run
+        vars: { TARGET: runtime }
 
   update-from-template:
     desc: Update project from template
@@ -224,6 +232,7 @@ tasks:
         service_name="Github Watcher Backend"
         service_slug="github-watcher"
         service_short_slug="backend"
+        with_trivy="true"
     vars:
       TEMPLATE_PATH: '{{.TEMPLATE_PATH | default "https://github.com/ovsds/template-service-python"}}'
 
@@ -234,8 +243,8 @@ tasks:
         - IMAGE_TAG
         - IMAGE_REGISTRY
     cmds:
-      - task: bake
-        vars: { COMMAND: runtime }
+      - task: image-bake
+        vars: { TARGET: runtime }
 
   ci-image-scan:
     desc: Scan image for vulnerabilities
