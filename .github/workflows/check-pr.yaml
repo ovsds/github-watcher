@@ -20,6 +20,9 @@ jobs:
 
       - name: Setup Environment
         uses: ./.github/actions/setup_environment
+        with:
+          python-enabled: true
+          poetry-enabled: true
 
       - name: Install Dependencies
         run: |

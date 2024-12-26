@@ -143,6 +143,7 @@ class Application:
         lifecycle_manager = lifecycle_manager_utils.LifecycleManager(logger=logger)
 
         # Startup
+
         lifecycle_manager.add_startup_callback(
             callback=lifecycle_manager_utils.StartupCallback(
                 callback=task_queue_state_service.load(),
