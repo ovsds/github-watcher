@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 async def run() -> None:
-    plugin_registration.register_plugins()
+    plugin_registration.register_default_plugins()
     settings = app.Settings()
     try:
         application = app.Application.from_settings(settings)

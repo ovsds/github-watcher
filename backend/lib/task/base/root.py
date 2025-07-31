@@ -3,7 +3,7 @@ import lib.utils.pydantic as pydantic_utils
 
 
 class RootConfig(pydantic_utils.BaseModel):
-    tasks: task_base.TaskConfigListPydanticAnnotation
+    tasks: pydantic_utils.TypedListAnnotation[task_base.BaseTaskConfig]
 
 
 __all__ = [

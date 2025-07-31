@@ -13,10 +13,7 @@ class MemoryQueueSettings(queue_base.BaseQueueSettings):
     type: typing.Literal["memory"]
 
 
-T = typing.TypeVar("T", bound=queue_base.QueueItem)
-
-
-class Topic(asyncio.Queue[T]):
+class Topic[QueueItemT: queue_base.QueueItem](asyncio.Queue[QueueItemT]):
     class TopicClosed(Exception):
         pass
 
@@ -39,12 +36,16 @@ class Topic(asyncio.Queue[T]):
     async def _clean_up(self) -> None:
         await super().join()
 
-        self._putters: typing.Iterable[asyncio.Future[T]]  # pyright: ignore[reportUninitializedInstanceVariable]
+        self._putters: typing.Iterable[  # pyright: ignore[reportUninitializedInstanceVariable]
+            asyncio.Future[QueueItemT]
+        ]
         for putter in self._putters:
             if not putter.done():
                 putter.set_exception(self.TopicClosed)
 
-        self._getters: typing.Iterable[asyncio.Future[T]]  # pyright: ignore[reportUninitializedInstanceVariable]
+        self._getters: typing.Iterable[  # pyright: ignore[reportUninitializedInstanceVariable]
+            asyncio.Future[QueueItemT]
+        ]
         for getter in self._getters:
             if not getter.done():
                 getter.set_exception(self.TopicFinished)
@@ -66,20 +67,20 @@ class Topic(asyncio.Queue[T]):
         if self.is_finished:
             raise self.TopicFinished()
 
-    async def get(self) -> T:
+    async def get(self) -> QueueItemT:
         self._validate_not_finished()
         return await super().get()
 
-    async def put(self, item: T, validate_not_closed: bool = True) -> None:
+    async def put(self, item: QueueItemT, validate_not_closed: bool = True) -> None:
         if validate_not_closed:
             self._validate_not_closed()
         await super().put(item)
 
-    async def consume(self, item: T) -> None:
+    async def consume(self, item: QueueItemT) -> None:
         self._consumed_items.add(item.unique_key)
 
     @contextlib.asynccontextmanager
-    async def acquire(self) -> typing.AsyncIterator[T]:
+    async def acquire(self) -> typing.AsyncIterator[QueueItemT]:
         item = await self.get()
 
         try:

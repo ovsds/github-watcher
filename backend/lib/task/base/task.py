@@ -4,20 +4,19 @@ import typing
 import warnings
 
 import cron_converter
-import pydantic
 
 import lib.task.base.action as action_base
 import lib.task.base.trigger as trigger_base
 import lib.utils.pydantic as pydantic_utils
 
 
-class BaseTaskConfig(pydantic_utils.BaseModel, pydantic_utils.IDMixinModel):
-    triggers: trigger_base.TriggerConfigListPydanticAnnotation
-    actions: action_base.ActionConfigListPydanticAnnotation
+class BaseTaskConfig(pydantic_utils.IDMixinModel, pydantic_utils.TypedBaseModel):
+    triggers: pydantic_utils.TypedListAnnotation[trigger_base.BaseTriggerConfig]
+    actions: pydantic_utils.TypedListAnnotation[action_base.BaseActionConfig]
 
     @classmethod
-    def factory(cls, v: typing.Any, info: pydantic.ValidationInfo) -> "BaseTaskConfig":
-        return task_config_factory(v)
+    def factory(cls, data: typing.Any) -> "BaseTaskConfig":
+        return task_config_factory(data)
 
 
 class OncePerRunTaskConfig(BaseTaskConfig):
@@ -38,11 +37,8 @@ class CronTaskConfig(BaseTaskConfig):
         return schedule.next() <= datetime.datetime.now(tz=last_run.tzinfo)
 
 
-ConfigT = typing.TypeVar("ConfigT", bound=BaseTaskConfig)
-
-
 @dataclasses.dataclass
-class RegistryRecord(typing.Generic[ConfigT]):
+class RegistryRecord[ConfigT: BaseTaskConfig]:
     config_class: type[ConfigT]
 
 
@@ -50,16 +46,6 @@ _REGISTRY: dict[str, RegistryRecord[typing.Any]] = {
     "once_per_run": RegistryRecord(config_class=OncePerRunTaskConfig),
     "cron": RegistryRecord(config_class=CronTaskConfig),
 }
-
-TaskConfigPydanticAnnotation = typing.Annotated[
-    pydantic.SerializeAsAny[BaseTaskConfig],
-    pydantic.BeforeValidator(BaseTaskConfig.factory),
-]
-TaskConfigListPydanticAnnotation = typing.Annotated[
-    list[pydantic.SerializeAsAny[BaseTaskConfig]],
-    pydantic.BeforeValidator(pydantic_utils.make_list_factory(BaseTaskConfig.factory)),
-    pydantic.AfterValidator(pydantic_utils.check_unique_ids),
-]
 
 
 def task_config_factory(data: typing.Any) -> BaseTaskConfig:
@@ -83,6 +69,4 @@ __all__ = [
     "BaseTaskConfig",
     "CronTaskConfig",
     "OncePerRunTaskConfig",
-    "TaskConfigListPydanticAnnotation",
-    "TaskConfigPydanticAnnotation",
 ]

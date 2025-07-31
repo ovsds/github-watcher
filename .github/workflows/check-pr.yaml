@@ -7,6 +7,10 @@ on:
       - reopened
       - synchronize
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.number }}
+  cancel-in-progress: true
+
 jobs:
   check-pr:
     runs-on: ubuntu-latest
@@ -17,12 +21,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Setup Environment
         uses: ./.github/actions/setup_environment
         with:
           python-enabled: true
           poetry-enabled: true
+          zizmor-enabled: true
 
       - name: Install Dependencies
         run: |
@@ -31,6 +38,8 @@ jobs:
       - name: Lint PR
         run: |
           task lint
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Required for Zizmor
 
       - name: Test backend in container
         working-directory: backend

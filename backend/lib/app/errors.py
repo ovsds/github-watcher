@@ -32,5 +32,6 @@ __all__ = [
     "ApplicationFailedJobsError",
     "ApplicationTimeoutError",
     "DisposeError",
+    "ServerRuntimeError",
     "ServerStartError",
 ]

@@ -3,10 +3,8 @@ import dataclasses
 import enum
 import typing
 
-import pydantic
-import pydantic_settings
-
 import lib.utils.json as json_utils
+import lib.utils.pydantic as pydantic_utils
 
 
 class JobTopic(str, enum.Enum):
@@ -63,18 +61,13 @@ class QueueRepositoryProtocol(typing.Protocol):
     async def close_topic(self, topic: JobTopic) -> None: ...
 
 
-class BaseQueueSettings(pydantic_settings.BaseSettings):
-    type: typing.Any
-
+class BaseQueueSettings(pydantic_utils.TypedBaseModel):
     @classmethod
-    def factory(cls, v: typing.Any, info: pydantic.ValidationInfo) -> "BaseQueueSettings":
-        return queue_settings_factory(v)
+    def factory(cls, data: typing.Any) -> "BaseQueueSettings":
+        return queue_settings_factory(data)
 
 
-SettingsT = typing.TypeVar("SettingsT", bound=BaseQueueSettings)
-
-
-class BaseQueueRepository(typing.Generic[SettingsT], abc.ABC):
+class BaseQueueRepository[SettingsT: BaseQueueSettings](abc.ABC):
     TopicClosed = QueueRepositoryProtocol.TopicClosed
     TopicFinished = QueueRepositoryProtocol.TopicFinished
 
@@ -108,7 +101,7 @@ class BaseQueueRepository(typing.Generic[SettingsT], abc.ABC):
 
 
 @dataclasses.dataclass
-class RegistryRecord(typing.Generic[SettingsT]):
+class RegistryRecord[SettingsT: BaseQueueSettings]:
     settings_class: type[SettingsT]
     repository_class: type[BaseQueueRepository[SettingsT]]
 
@@ -116,7 +109,7 @@ class RegistryRecord(typing.Generic[SettingsT]):
 _REGISTRY: dict[str, RegistryRecord[typing.Any]] = {}
 
 
-def register_queue_backend(
+def register_queue_backend[SettingsT: BaseQueueSettings](
     name: str,
     settings_class: type[SettingsT],
     repository_class: type[BaseQueueRepository[SettingsT]],
@@ -137,7 +130,7 @@ def queue_settings_factory(data: typing.Any) -> BaseQueueSettings:
 
 
 def queue_repository_factory(settings: BaseQueueSettings) -> QueueRepositoryProtocol:
-    repository_class = _REGISTRY[settings.type].repository_class
+    repository_class = _REGISTRY[settings.type_name].repository_class
     return repository_class.from_settings(settings)
 
 

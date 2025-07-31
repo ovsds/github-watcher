@@ -5,7 +5,7 @@ import lib.utils.json as json_utils
 import lib.utils.pydantic as pydantic_utils
 
 
-class BaseJob(pydantic_utils.BaseModel, pydantic_utils.IDMixinModel):
+class BaseJob(pydantic_utils.IDMixinModel):
     retry_count: int = 0
 
     @property
@@ -20,25 +20,27 @@ class BaseJob(pydantic_utils.BaseModel, pydantic_utils.IDMixinModel):
 
     @classmethod
     def from_raw(cls, raw: json_utils.JsonSerializableDict, reset_retry_count: bool = False) -> typing.Self:
-        if reset_retry_count:
-            raw["retry_count"] = 0
+        result = cls.model_validate(obj=raw)
 
-        return cls.model_validate(obj=raw)
+        if reset_retry_count:
+            result.retry_count = 0
+
+        return result
 
 
 class TaskJob(BaseJob):
-    task: task_base.TaskConfigPydanticAnnotation
+    task: pydantic_utils.TypedAnnotation[task_base.BaseTaskConfig]
 
 
 class TriggerJob(BaseJob):
     task_id: str
-    trigger: task_base.TriggerConfigPydanticAnnotation
-    actions: task_base.ActionConfigListPydanticAnnotation
+    trigger: pydantic_utils.TypedAnnotation[task_base.BaseTriggerConfig]
+    actions: pydantic_utils.TypedListAnnotation[task_base.BaseActionConfig]
 
 
 class EventJob(BaseJob):
     event: task_base.Event
-    action: task_base.ActionConfigPydanticAnnotation
+    action: pydantic_utils.TypedAnnotation[task_base.BaseActionConfig]
 
 
 __all__ = [

@@ -2,10 +2,8 @@ import abc
 import dataclasses
 import typing
 
-import pydantic
-import pydantic_settings
-
 import lib.task.base as task_base
+import lib.utils.pydantic as pydantic_utils
 
 
 class ConfigRepositoryProtocol(typing.Protocol):
@@ -14,18 +12,13 @@ class ConfigRepositoryProtocol(typing.Protocol):
     async def get_config(self) -> task_base.RootConfig: ...
 
 
-class BaseConfigSettings(pydantic_settings.BaseSettings):
-    type: typing.Any
-
+class BaseConfigSettings(pydantic_utils.TypedBaseModel):
     @classmethod
-    def factory(cls, v: typing.Any, info: pydantic.ValidationInfo) -> "BaseConfigSettings":
-        return config_settings_factory(v)
+    def factory(cls, data: typing.Any) -> "BaseConfigSettings":
+        return config_settings_factory(data)
 
 
-SettingsT = typing.TypeVar("SettingsT", bound=BaseConfigSettings)
-
-
-class BaseConfigRepository(typing.Generic[SettingsT], abc.ABC):
+class BaseConfigRepository[SettingsT: BaseConfigSettings](abc.ABC):
     @classmethod
     @abc.abstractmethod
     def from_settings(cls, settings: SettingsT) -> typing.Self: ...
@@ -37,7 +30,7 @@ class BaseConfigRepository(typing.Generic[SettingsT], abc.ABC):
 
 
 @dataclasses.dataclass
-class RegistryRecord(typing.Generic[SettingsT]):
+class RegistryRecord[SettingsT: BaseConfigSettings]:
     settings_class: type[SettingsT]
     repository_class: type[BaseConfigRepository[SettingsT]]
 
@@ -45,7 +38,7 @@ class RegistryRecord(typing.Generic[SettingsT]):
 _REGISTRY: dict[str, RegistryRecord[typing.Any]] = {}
 
 
-def register_config_backend(
+def register_config_backend[SettingsT: BaseConfigSettings](
     name: str,
     settings_class: type[SettingsT],
     repository_class: type[BaseConfigRepository[SettingsT]],
@@ -66,7 +59,7 @@ def config_settings_factory(data: typing.Any) -> BaseConfigSettings:
 
 
 def config_repository_factory(settings: BaseConfigSettings) -> ConfigRepositoryProtocol:
-    repository_class = _REGISTRY[settings.type].repository_class
+    repository_class = _REGISTRY[settings.type_name].repository_class
     return repository_class.from_settings(settings)
 
 

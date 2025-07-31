@@ -1,23 +1,23 @@
 import typing
 
-import ujson
+import orjson
 
 JsonSerializableType = str | int | float | bool | None
 JsonSerializable = JsonSerializableType | typing.Mapping[str, "JsonSerializable"] | typing.Sequence["JsonSerializable"]
-JsonSerializableDict = dict[str, JsonSerializable]
-JsonSerializableList = list[JsonSerializable]
+JsonSerializableDict = typing.Mapping[str, JsonSerializable]
+JsonSerializableList = typing.Sequence[JsonSerializable]
 
 
-dumps_str = ujson.dumps
-loads_str = ujson.loads
+dumps_bytes = orjson.dumps
+loads_bytes = orjson.loads
 
 
-def dumps_bytes(obj: JsonSerializable) -> bytes:
-    return dumps_str(obj).encode("utf-8")
+def dumps_str(obj: JsonSerializable) -> str:
+    return dumps_bytes(obj).decode("utf-8")
 
 
-def loads_bytes(obj: bytes) -> JsonSerializable:
-    return loads_str(obj.decode("utf-8"))
+def loads_str(s: str) -> JsonSerializable:
+    return loads_bytes(s.encode("utf-8"))
 
 
 __all__ = [
