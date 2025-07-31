@@ -32,9 +32,6 @@ class BaseResponse(BaseModel):
         raise NotImplementedError
 
 
-ResponseT = typing.TypeVar("ResponseT", bound=BaseResponse)
-
-
 @dataclasses.dataclass
 class GetRepositoryWorkflowRunsRequest(BaseRequest):
     owner: str
@@ -102,7 +99,7 @@ class RestGithubClient:
     async def dispose(self) -> None:
         await self._aiohttp_client.close()
 
-    async def _request(
+    async def _request[ResponseT: BaseResponse](
         self,
         request: BaseRequest,
         response_model: type[ResponseT],

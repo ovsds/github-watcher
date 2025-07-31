@@ -5,6 +5,10 @@ on:
     - cron: 0 0 * * 0 # Every Sunday at 00:00 UTC
   workflow_dispatch:
 
+concurrency:
+  group: $${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   release-pr-cleanup:
     runs-on: ubuntu-22.04

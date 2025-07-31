@@ -39,25 +39,25 @@ aiojobs = "^1.2.1"
 cron-converter = "^1.1.0"
 gql = {extras = ["aiohttp"], version = "^3.5.0"}
 graphql-core = "^3.2.3"
-pydantic = "^2.0.2"
-pydantic-settings = "^2.0.1"
+orjson = "^3.10.13"
+pydantic = "^2.11.7"
+pydantic-settings = {extras = ["yaml"], version = "^2.7.1"}
 python = "~3.12"
 pyyaml = "^6.0.1"
-ujson = "^5.9.0"
 
 [tool.poetry.group.dev]
 optional = true
 
 [tool.poetry.group.dev.dependencies]
-black = "24.3.0"
-coverage = "7.4.4"
-deptry = "^0.18.0"
-pytest = "8.1.1"
-pytest-asyncio = "0.23.6"
-pytest-mock = "3.14.0"
-ruff = "0.3.4"
-sort-all = "1.2.0"
-toml-sort = "0.23.1"
+black = "*"
+coverage = "*"
+deptry = "*"
+pytest = "*"
+pytest-asyncio = "*"
+pytest-mock = "*"
+ruff = "*"
+sort-all = "*"
+toml-sort = "*"
 
 [tool.pyright]
 exclude = [

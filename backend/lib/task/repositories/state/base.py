@@ -3,21 +3,14 @@ import contextlib
 import dataclasses
 import typing
 
-import pydantic
-import pydantic_settings
-
 import lib.task.protocols as task_protocols
+import lib.utils.pydantic as pydantic_utils
 
 
-class BaseStateSettings(pydantic_settings.BaseSettings):
-    type: typing.Any
-
+class BaseStateSettings(pydantic_utils.TypedBaseModel):
     @classmethod
-    def factory(cls, v: typing.Any, info: pydantic.ValidationInfo) -> "BaseStateSettings":
-        return state_settings_factory(v)
-
-
-SettingsT = typing.TypeVar("SettingsT", bound=BaseStateSettings)
+    def factory(cls, data: typing.Any) -> "BaseStateSettings":
+        return state_settings_factory(data)
 
 
 class State:
@@ -40,7 +33,7 @@ class State:
             yield state
 
 
-class BaseStateRepository(typing.Generic[SettingsT], abc.ABC):
+class BaseStateRepository[SettingsT: BaseStateSettings](abc.ABC):
     @classmethod
     @abc.abstractmethod
     def from_settings(cls, settings: SettingsT) -> typing.Self: ...
@@ -63,7 +56,7 @@ class BaseStateRepository(typing.Generic[SettingsT], abc.ABC):
 
 
 @dataclasses.dataclass
-class RegistryRecord(typing.Generic[SettingsT]):
+class RegistryRecord[SettingsT: BaseStateSettings]:
     settings_class: type[SettingsT]
     repository_class: type[BaseStateRepository[SettingsT]]
 
@@ -71,7 +64,7 @@ class RegistryRecord(typing.Generic[SettingsT]):
 _REGISTRY: dict[str, RegistryRecord[typing.Any]] = {}
 
 
-def register_state_backend(
+def register_state_backend[SettingsT: BaseStateSettings](
     name: str,
     settings_class: type[SettingsT],
     repository_class: type[BaseStateRepository[SettingsT]],
@@ -92,7 +85,7 @@ def state_settings_factory(data: typing.Any) -> BaseStateSettings:
 
 
 def state_repository_factory(settings: BaseStateSettings) -> task_protocols.StateRepositoryProtocol:
-    repository_class = _REGISTRY[settings.type].repository_class
+    repository_class = _REGISTRY[settings.type_name].repository_class
     return repository_class.from_settings(settings)
 
 

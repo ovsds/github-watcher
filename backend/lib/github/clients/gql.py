@@ -33,9 +33,6 @@ class BaseResponse(BaseModel):
         raise NotImplementedError
 
 
-ResponseT = typing.TypeVar("ResponseT", bound=BaseResponse)
-
-
 @dataclasses.dataclass
 class GetRepositoriesRequest(BaseRequest):
     owner: str
@@ -265,7 +262,11 @@ class GqlGithubClient:
         finally:
             await gql_transport.close()
 
-    async def _request(self, request: BaseRequest, response_model: type[ResponseT]) -> ResponseT:
+    async def _request[ResponseT: BaseResponse](
+        self,
+        request: BaseRequest,
+        response_model: type[ResponseT],
+    ) -> ResponseT:
         logger.debug("Requesting document(%s) params(%s)", request.document, request.params)
         async with self.gql_client() as gql_client:
             response = await gql_client.execute_async(

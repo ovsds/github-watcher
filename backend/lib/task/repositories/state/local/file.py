@@ -30,15 +30,21 @@ class LocalDirStateRepository(state_base.BaseStateRepository[LocalDirStateSettin
         logger.debug("Loading State(%s)", path)
         try:
             async with aiofile.async_open(f"{self._root_path}/{path}.json", "r") as file:
-                data = await file.read()
-                if data == "":
-                    logger.debug("Found empty State(%s)", path)
-                    return None
-
-                return json_utils.loads_str(data)
+                raw_data = await file.read()
         except FileNotFoundError:
             logger.debug("No State(%s) was found", path)
             return None
+
+        if raw_data == "":
+            logger.debug("Found empty State(%s)", path)
+            return None
+
+        data = json_utils.loads_str(raw_data)
+
+        if not isinstance(data, dict):
+            raise ValueError(f"Found invalid state data for State({path}), expected dict, got {type(data)}")
+
+        return data
 
     async def set(self, path: str, value: task_protocols.StateData) -> None:
         logger.debug("Saving State(%s)", path)

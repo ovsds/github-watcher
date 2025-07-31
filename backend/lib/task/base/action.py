@@ -2,8 +2,6 @@ import abc
 import dataclasses
 import typing
 
-import pydantic
-
 import lib.task.base.event as task_configs_event
 import lib.utils.pydantic as pydantic_utils
 
@@ -14,29 +12,13 @@ class ActionProcessorProtocol(typing.Protocol):
     async def process(self, event: task_configs_event.Event) -> None: ...
 
 
-class BaseActionConfig(pydantic_utils.BaseModel, pydantic_utils.IDMixinModel):
-    type: str
-
+class BaseActionConfig(pydantic_utils.IDMixinModel, pydantic_utils.TypedBaseModel):
     @classmethod
-    def factory(cls, v: typing.Any, info: pydantic.ValidationInfo) -> "BaseActionConfig":
-        return action_config_factory(v)
+    def factory(cls, data: typing.Any) -> "BaseActionConfig":
+        return action_config_factory(data)
 
 
-ActionConfigPydanticAnnotation = typing.Annotated[
-    pydantic.SerializeAsAny[BaseActionConfig],
-    pydantic.BeforeValidator(BaseActionConfig.factory),
-]
-ActionConfigListPydanticAnnotation = typing.Annotated[
-    list[pydantic.SerializeAsAny[BaseActionConfig]],
-    pydantic.BeforeValidator(pydantic_utils.make_list_factory(BaseActionConfig.factory)),
-    pydantic.AfterValidator(pydantic_utils.check_unique_ids),
-]
-
-
-ConfigT = typing.TypeVar("ConfigT", bound=BaseActionConfig)
-
-
-class ActionProcessor(typing.Generic[ConfigT], abc.ABC):
+class ActionProcessor[ConfigT: BaseActionConfig](abc.ABC):
     @classmethod
     @abc.abstractmethod
     def from_config(
@@ -51,7 +33,7 @@ class ActionProcessor(typing.Generic[ConfigT], abc.ABC):
 
 
 @dataclasses.dataclass
-class RegistryRecord(typing.Generic[ConfigT]):
+class RegistryRecord[ConfigT: BaseActionConfig]:
     config_class: type[ConfigT]
     processor_class: type[ActionProcessor[ConfigT]]
 
@@ -59,7 +41,7 @@ class RegistryRecord(typing.Generic[ConfigT]):
 _REGISTRY: dict[str, RegistryRecord[typing.Any]] = {}
 
 
-def register_action(
+def register_action[ConfigT: BaseActionConfig](
     name: str,
     config_class: type[ConfigT],
     processor_class: type[ActionProcessor[ConfigT]],
@@ -81,13 +63,11 @@ def action_config_factory(data: typing.Any) -> BaseActionConfig:
 def action_processor_factory(
     config: BaseActionConfig,
 ) -> ActionProcessorProtocol:
-    processor_class = _REGISTRY[config.type].processor_class
+    processor_class = _REGISTRY[config.type_name].processor_class
     return processor_class.from_config(config)
 
 
 __all__ = [
-    "ActionConfigListPydanticAnnotation",
-    "ActionConfigPydanticAnnotation",
     "ActionProcessor",
     "ActionProcessorProtocol",
     "BaseActionConfig",

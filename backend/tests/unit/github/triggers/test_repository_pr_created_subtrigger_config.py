@@ -27,32 +27,48 @@ def test_is_applicable_default(pr: github_models.PullRequest):
 
 
 def test_is_applicable_include_author(pr: github_models.PullRequest):
-    config = github_triggers.RepositoryPRCreatedSubtriggerConfig(
-        id="test_id",
-        include_author=["test_author"],
+    config = github_triggers.SubtriggerConfig.factory(
+        data={
+            "type": "repository_pr_created",
+            "id": "test_id",
+            "include_author": ["test_author"],
+        },
     )
+    assert isinstance(config, github_triggers.RepositoryPRCreatedSubtriggerConfig)
     assert config.is_applicable(pr=pr)
 
 
 def test_is_applicable_include_author_not_matching(pr: github_models.PullRequest):
-    config = github_triggers.RepositoryPRCreatedSubtriggerConfig(
-        id="test_id",
-        include_author=["other_author"],
+    config = github_triggers.SubtriggerConfig.factory(
+        data={
+            "type": "repository_pr_created",
+            "id": "test_id",
+            "include_author": ["other_author"],
+        },
     )
+    assert isinstance(config, github_triggers.RepositoryPRCreatedSubtriggerConfig)
     assert not config.is_applicable(pr=pr)
 
 
 def test_is_applicable_exclude_author(pr: github_models.PullRequest):
-    config = github_triggers.RepositoryPRCreatedSubtriggerConfig(
-        id="test_id",
-        exclude_author=["other_author"],
+    config = github_triggers.SubtriggerConfig.factory(
+        data={
+            "type": "repository_pr_created",
+            "id": "test_id",
+            "exclude_author": ["other_author"],
+        },
     )
+    assert isinstance(config, github_triggers.RepositoryPRCreatedSubtriggerConfig)
     assert config.is_applicable(pr=pr)
 
 
 def test_is_applicable_exclude_author_matching(pr: github_models.PullRequest):
-    config = github_triggers.RepositoryPRCreatedSubtriggerConfig(
-        id="test_id",
-        exclude_author=["test_author"],
+    config = github_triggers.SubtriggerConfig.factory(
+        data={
+            "type": "repository_pr_created",
+            "id": "test_id",
+            "exclude_author": ["test_author"],
+        },
     )
+    assert isinstance(config, github_triggers.RepositoryPRCreatedSubtriggerConfig)
     assert not config.is_applicable(pr=pr)

@@ -5,10 +5,8 @@ import os
 import pathlib
 import typing
 
-T = typing.TypeVar("T")
 
-
-class GatherIterators(typing.Generic[T]):
+class GatherIterators[T]:
     def __init__(self, iterators: typing.Iterable[typing.AsyncIterator[T]]) -> None:
         self._iterators: dict[asyncio.Task[T], typing.AsyncIterator[T]] = {}  # {task: iterator}
 

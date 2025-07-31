@@ -17,29 +17,13 @@ import lib.utils.pydantic as pydantic_utils
 logger = logging.getLogger(__name__)
 
 
-class SubtriggerConfig(pydantic_utils.BaseModel, pydantic_utils.IDMixinModel):
-    type: str
-
+class SubtriggerConfig(pydantic_utils.TypedBaseModel, pydantic_utils.IDMixinModel):
     @pydantic.model_validator(mode="before")
     @classmethod
     def set_default_id(cls, data: dict[str, typing.Any]) -> dict[str, typing.Any]:
         if "id" not in data:
             data["id"] = data["type"]
         return data
-
-    @classmethod
-    def factory(cls, v: typing.Any, info: pydantic.ValidationInfo) -> "SubtriggerConfig":
-        assert isinstance(v, dict)
-        assert "type" in v
-
-        if v["type"] == "repository_issue_created":
-            return RepositoryIssueCreatedSubtriggerConfig.model_validate(v)
-        if v["type"] == "repository_pr_created":
-            return RepositoryPRCreatedSubtriggerConfig.model_validate(v)
-        if v["type"] == "repository_failed_workflow_run":
-            return RepositoryFailedWorkflowRunSubtriggerConfig.model_validate(v)
-
-        raise ValueError(f"Unknown subtrigger type: {v['type']}")
 
 
 def _check_match(string: str, items: list[str] | None = None) -> bool:
@@ -83,7 +67,7 @@ def _check_applicable(
 
 
 class RepositoryIssueCreatedSubtriggerConfig(SubtriggerConfig):
-    type: str = "repository_issue_created"
+    type_name: str = "repository_issue_created"
 
     include_author: list[str] = pydantic.Field(default_factory=list)
     exclude_author: list[str] = pydantic.Field(default_factory=list)
@@ -112,7 +96,7 @@ class RepositoryIssueCreatedSubtriggerConfig(SubtriggerConfig):
 
 
 class RepositoryPRCreatedSubtriggerConfig(SubtriggerConfig):
-    type: str = "repository_pr_created"
+    type_name: str = "repository_pr_created"
 
     include_author: list[str] = pydantic.Field(default_factory=list)
     exclude_author: list[str] = pydantic.Field(default_factory=list)
@@ -129,7 +113,7 @@ class RepositoryPRCreatedSubtriggerConfig(SubtriggerConfig):
 
 
 class RepositoryFailedWorkflowRunSubtriggerConfig(SubtriggerConfig):
-    type: str = "repository_failed_workflow_run"
+    type_name: str = "repository_failed_workflow_run"
 
     include: list[str] = pydantic.Field(default_factory=list)
     exclude: list[str] = pydantic.Field(default_factory=list)
@@ -150,7 +134,7 @@ class RepositoryFailedWorkflowRunSubtriggerConfig(SubtriggerConfig):
 
 
 class GithubTriggerConfig(task_base.BaseTriggerConfig):
-    token_secret: task_base.SecretConfigPydanticAnnotation
+    token_secret: pydantic_utils.TypedAnnotation[task_base.BaseSecretConfig]
     owner: str
     repos: list[str] = pydantic.Field(default_factory=list)  # TODO 1.0.0: remove
     include_repos: list[str] = pydantic.Field(default_factory=list)
@@ -158,7 +142,7 @@ class GithubTriggerConfig(task_base.BaseTriggerConfig):
     default_timedelta_seconds: int = 60 * 60 * 24  # 1 day
     subtriggers: typing.Annotated[
         list[pydantic.SerializeAsAny[SubtriggerConfig]],
-        pydantic.BeforeValidator(pydantic_utils.make_list_factory(SubtriggerConfig.factory)),
+        pydantic.BeforeValidator(SubtriggerConfig.list_factory),
         pydantic.AfterValidator(pydantic_utils.check_unique_ids),
     ]
 
@@ -212,7 +196,9 @@ class RepositoryPRCreatedState(pydantic_utils.BaseModel):
 
 class RepositoryFailedWorkflowRunState(pydantic_utils.BaseModel):
     oldest_incomplete_created: datetime.datetime
-    already_reported_failed_runs: set[github_models.WorkflowRun] = pydantic.Field(default_factory=set)
+    already_reported_failed_runs: set[github_models.WorkflowRun] = pydantic.Field(
+        default_factory=set[github_models.WorkflowRun]
+    )
 
     @classmethod
     def default_factory(cls, timedelta: datetime.timedelta) -> typing.Self:
@@ -222,9 +208,15 @@ class RepositoryFailedWorkflowRunState(pydantic_utils.BaseModel):
 
 
 class GithubTriggerState(pydantic_utils.BaseModel):
-    repository_issue_created: dict[str, RepositoryIssueCreatedState] = pydantic.Field(default_factory=dict)
-    repository_pr_created: dict[str, RepositoryPRCreatedState] = pydantic.Field(default_factory=dict)
-    repository_failed_workflow_run: dict[str, RepositoryFailedWorkflowRunState] = pydantic.Field(default_factory=dict)
+    repository_issue_created: dict[str, RepositoryIssueCreatedState] = pydantic.Field(
+        default_factory=dict[str, RepositoryIssueCreatedState]
+    )
+    repository_pr_created: dict[str, RepositoryPRCreatedState] = pydantic.Field(
+        default_factory=dict[str, RepositoryPRCreatedState]
+    )
+    repository_failed_workflow_run: dict[str, RepositoryFailedWorkflowRunState] = pydantic.Field(
+        default_factory=dict[str, RepositoryFailedWorkflowRunState]
+    )
 
 
 class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
@@ -489,8 +481,22 @@ class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
         }
 
 
+def register_default_plugins() -> None:
+    logger.info("Registering default github triggers plugins")
+    task_base.register_trigger(
+        name="github",
+        config_class=GithubTriggerConfig,
+        processor_class=GithubTriggerProcessor,
+    )
+
+    SubtriggerConfig.register("repository_issue_created", RepositoryIssueCreatedSubtriggerConfig)
+    SubtriggerConfig.register("repository_pr_created", RepositoryPRCreatedSubtriggerConfig)
+    SubtriggerConfig.register("repository_failed_workflow_run", RepositoryFailedWorkflowRunSubtriggerConfig)
+
+
 __all__ = [
     "GithubTriggerConfig",
     "GithubTriggerProcessor",
     "RepositoryIssueCreatedSubtriggerConfig",
+    "register_default_plugins",
 ]

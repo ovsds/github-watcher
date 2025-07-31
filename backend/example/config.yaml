@@ -8,10 +8,9 @@ tasks:
         token_secret:
           type: env
           key: GITHUB_TOKEN
-        owner: ovsds
+        owner: python
         include_repos:
-          - github-watcher
-          - github-watcher-action
+          - cpython
         subtriggers:
           - type: repository_issue_created
           - type: repository_pr_created
