@@ -5,8 +5,8 @@ variable "IMAGE_TAG" {}
 target "base" {
   dockerfile = "Dockerfile"
   contexts = {
-    "base_builder" = "docker-image://docker.io/library/python:3.12.7-bookworm"
-    "base_runtime" = "docker-image://docker.io/library/python:3.12.7-slim-bookworm"
+    "base_builder" = "docker-image://docker.io/library/python:3.12.11-bookworm"
+    "base_runtime" = "docker-image://docker.io/library/python:3.12.11-slim-bookworm"
     "sources" = "."
   }
 }
