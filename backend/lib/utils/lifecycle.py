@@ -7,7 +7,7 @@ Awaitable = typing.Awaitable[typing.Any]
 Task = asyncio.Task[typing.Any]
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class Callback:
     awaitable: Awaitable
     error_message: str

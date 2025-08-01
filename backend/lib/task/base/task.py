@@ -37,7 +37,7 @@ class CronTaskConfig(BaseTaskConfig):
         return schedule.next() <= datetime.datetime.now(tz=last_run.tzinfo)
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class RegistryRecord[ConfigT: BaseTaskConfig]:
     config_class: type[ConfigT]
 

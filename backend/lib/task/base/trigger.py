@@ -33,7 +33,7 @@ class TriggerProcessor[ConfigT: BaseTriggerConfig](abc.ABC):
     async def dispose(self) -> None: ...
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class RegistryRecord[ConfigT: BaseTriggerConfig]:
     config_class: type[ConfigT]
     processor_class: type[TriggerProcessor[ConfigT]]

@@ -55,7 +55,7 @@ class BaseStateRepository[SettingsT: BaseStateSettings](abc.ABC):
         return State(repository=self, path=path)
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class RegistryRecord[SettingsT: BaseStateSettings]:
     settings_class: type[SettingsT]
     repository_class: type[BaseStateRepository[SettingsT]]

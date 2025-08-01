@@ -5,34 +5,33 @@ import logging
 import typing
 
 import aiohttp
-import pydantic
 
 import lib.github.models as github_models
+import lib.utils.pydantic as pydantic_utils
 
 logger = logging.getLogger(__name__)
 
 
 class BaseRequest(abc.ABC):
-    method: str
+    @property
+    @abc.abstractmethod
+    def method(self) -> str: ...
 
     @property
     @abc.abstractmethod
     def url(self) -> str: ...
 
     @property
-    def params(self) -> dict[str, typing.Any]:
-        return {}
+    @abc.abstractmethod
+    def params(self) -> dict[str, typing.Any]: ...
 
 
-class BaseModel(pydantic.BaseModel): ...
-
-
-class BaseResponse(BaseModel):
+class BaseResponse(pydantic_utils.BaseModel):
     def to_dataclass(self) -> typing.Any:
         raise NotImplementedError
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class GetRepositoryWorkflowRunsRequest(BaseRequest):
     owner: str
     repository: str
@@ -40,7 +39,10 @@ class GetRepositoryWorkflowRunsRequest(BaseRequest):
     per_page: int = 100
     page: int = 1
     exclude_pull_requests: bool = True
-    method: str = "GET"
+
+    @property
+    def method(self) -> str:
+        return "GET"
 
     @property
     def url(self) -> str:
@@ -57,7 +59,7 @@ class GetRepositoryWorkflowRunsRequest(BaseRequest):
 
 
 class GetRepositoryWorkflowRunsResponse(BaseResponse):
-    class WorkflowRun(pydantic.BaseModel):
+    class WorkflowRun(pydantic_utils.BaseModel):
         id: int
         name: str
         html_url: str
@@ -82,14 +84,10 @@ class GetRepositoryWorkflowRunsResponse(BaseResponse):
         ]
 
 
+@dataclasses.dataclass(frozen=True)
 class RestGithubClient:
-    def __init__(
-        self,
-        aiohttp_client: aiohttp.ClientSession,
-        token: str,
-    ) -> None:
-        self._aiohttp_client = aiohttp_client
-        self._token = token
+    aiohttp_client: aiohttp.ClientSession
+    token: str
 
     @classmethod
     def from_token(cls, token: str) -> typing.Self:
@@ -97,7 +95,7 @@ class RestGithubClient:
         return cls(aiohttp_client=aiohttp_client, token=token)
 
     async def dispose(self) -> None:
-        await self._aiohttp_client.close()
+        await self.aiohttp_client.close()
 
     async def _request[ResponseT: BaseResponse](
         self,
@@ -105,11 +103,11 @@ class RestGithubClient:
         response_model: type[ResponseT],
     ) -> ResponseT:
         headers = {
-            "Authorization": f"Bearer {self._token}",
+            "Authorization": f"Bearer {self.token}",
             "Accept": "application/vnd.github.v3+json",
         }
         logger.debug("Requesting method(%s) url(%s) params(%s)", request.method, request.url, request.params)
-        async with self._aiohttp_client.request(
+        async with self.aiohttp_client.request(
             method=request.method,
             url=request.url,
             params=request.params,
@@ -119,19 +117,35 @@ class RestGithubClient:
             data = await response.json()
             return response_model.model_validate(data)
 
+    async def _get_repository_workflow_runs(
+        self,
+        request: GetRepositoryWorkflowRunsRequest,
+    ) -> GetRepositoryWorkflowRunsResponse:
+        return await self._request(request, GetRepositoryWorkflowRunsResponse)
+
     async def get_repository_workflow_runs(
         self,
         request: GetRepositoryWorkflowRunsRequest,
     ) -> typing.AsyncGenerator[github_models.WorkflowRun, None]:
+        page = request.page
+
         while True:
-            response = await self._request(request, GetRepositoryWorkflowRunsResponse)
+            response = await self._get_repository_workflow_runs(
+                request=GetRepositoryWorkflowRunsRequest(
+                    owner=request.owner,
+                    repository=request.repository,
+                    created_after=request.created_after,
+                    page=page,
+                    per_page=request.per_page,
+                ),
+            )
             if not response.workflow_runs:
                 return
 
             for workflow_run in response.to_dataclass():
                 yield workflow_run
 
-            request.page += 1
+            page += 1
 
 
 __all__ = [

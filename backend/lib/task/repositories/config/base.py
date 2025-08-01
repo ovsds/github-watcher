@@ -29,7 +29,7 @@ class BaseConfigRepository[SettingsT: BaseConfigSettings](abc.ABC):
     async def get_config(self) -> task_base.RootConfig: ...
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class RegistryRecord[SettingsT: BaseConfigSettings]:
     settings_class: type[SettingsT]
     repository_class: type[BaseConfigRepository[SettingsT]]

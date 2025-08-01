@@ -2,13 +2,13 @@ import dataclasses
 import datetime
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class Repository:
     owner: str
     name: str
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class Issue:
     id: str
     author: str | None
@@ -18,7 +18,7 @@ class Issue:
     created_at: datetime.datetime
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class PullRequest:
     id: str
     author: str | None
