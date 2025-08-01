@@ -9,6 +9,7 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .coverage/
+htmlcov/
 
 # Backend temporary files
 backend/example/state

@@ -32,7 +32,7 @@ class ActionProcessor[ConfigT: BaseActionConfig](abc.ABC):
     async def process(self, event: task_configs_event.Event) -> None: ...
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class RegistryRecord[ConfigT: BaseActionConfig]:
     config_class: type[ConfigT]
     processor_class: type[ActionProcessor[ConfigT]]

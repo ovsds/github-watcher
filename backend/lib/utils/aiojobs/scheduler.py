@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 AioJobsScheduler = aiojobs.Scheduler
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class Settings:
     limit: int | None
     pending_limit: int | None

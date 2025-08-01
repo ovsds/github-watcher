@@ -1,9 +1,11 @@
+import dataclasses
 import logging
 import typing
 
 import aiohttp
 
 import lib.task.base as task_base
+import lib.telegram.clients as telegram_clients
 import lib.utils.pydantic as pydantic_utils
 
 logger = logging.getLogger(__name__)
@@ -20,17 +22,14 @@ class TelegramWebhookActionConfig(task_base.BaseActionConfig):
     max_message_body_length: int = 500
 
 
+@dataclasses.dataclass(frozen=True)
 class TelegramWebhookProcessor(task_base.ActionProcessor[TelegramWebhookActionConfig]):
-    def __init__(
-        self,
-        config: TelegramWebhookActionConfig,
-        aiohttp_client: aiohttp.ClientSession,
-    ):
-        self._config = config
-        self._aiohttp_client = aiohttp_client
+    config: TelegramWebhookActionConfig
+    aiohttp_client: aiohttp.ClientSession
+    telegram_client: telegram_clients.RestTelegramClient
 
     async def dispose(self) -> None:
-        await self._aiohttp_client.close()
+        await self.aiohttp_client.close()
 
     @classmethod
     def from_config(
@@ -38,25 +37,32 @@ class TelegramWebhookProcessor(task_base.ActionProcessor[TelegramWebhookActionCo
         config: TelegramWebhookActionConfig,
     ) -> typing.Self:
         aiohttp_client = aiohttp.ClientSession()
+        telegram_client = telegram_clients.RestTelegramClient(
+            token=config.token_secret.value,
+            aiohttp_client=aiohttp_client,
+        )
 
         return cls(
             config=config,
             aiohttp_client=aiohttp_client,
+            telegram_client=telegram_client,
+        )
+
+    def _format_message(self, event: task_base.Event) -> str:
+        return (
+            f"<b>{trim_string(event.title, self.config.max_message_title_length)}</b>"
+            f"\n{trim_string(event.body, self.config.max_message_body_length)}"
+            f"\n{event.url}"
         )
 
     async def process(self, event: task_base.Event) -> None:
-        async with self._aiohttp_client.post(
-            f"https://api.telegram.org/bot{self._config.token_secret.value}/sendMessage",
-            params={
-                "chat_id": self._config.chat_id_secret.value,
-                "text": f"<b>{trim_string(event.title, self._config.max_message_title_length)}</b>"
-                f"\n{trim_string(event.body, self._config.max_message_body_length)}"
-                f"\n{event.url}",
-                "parse_mode": "HTML",
-                "disable_web_page_preview": "true",
-            },
-        ) as response:
-            response.raise_for_status()
+        text = self._format_message(event)
+        await self.telegram_client.send_message(
+            request=telegram_clients.SendMessageRequest(
+                chat_id=self.config.chat_id_secret.value,
+                text=text,
+            ),
+        )
 
 
 def register_default_plugins() -> None:

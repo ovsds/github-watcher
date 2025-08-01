@@ -100,7 +100,7 @@ class BaseQueueRepository[SettingsT: BaseQueueSettings](abc.ABC):
     async def close_topic(self, topic: JobTopic) -> None: ...
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class RegistryRecord[SettingsT: BaseQueueSettings]:
     settings_class: type[SettingsT]
     repository_class: type[BaseQueueRepository[SettingsT]]

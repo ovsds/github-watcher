@@ -12,19 +12,22 @@ import pydantic
 import pydantic.alias_generators as pydantic_alias_generators
 
 import lib.github.models as github_models
+import lib.utils.pydantic as pydantic_utils
 
 logger = logging.getLogger(__name__)
 
 
 class BaseRequest(abc.ABC):
-    document: graphql.DocumentNode = NotImplemented
+    @property
+    @abc.abstractmethod
+    def document(self) -> graphql.DocumentNode: ...
 
     @property
     def params(self) -> dict[str, typing.Any]:
         raise NotImplementedError
 
 
-class BaseModel(pydantic.BaseModel):
+class BaseModel(pydantic_utils.BaseModel):
     model_config = pydantic.ConfigDict(alias_generator=pydantic_alias_generators.to_camel)
 
 
@@ -33,32 +36,34 @@ class BaseResponse(BaseModel):
         raise NotImplementedError
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class GetRepositoriesRequest(BaseRequest):
     owner: str
     limit: int = 100
     after: str | None = None
 
-    document: graphql.DocumentNode = gql.gql(
-        """
-        query myOrgRepos($query: String!, $limit: Int!, $after: String) {
-            search(query: $query, type: REPOSITORY, first: $limit, after: $after) {
-                nodes {
-                    ... on Repository {
-                        name
-                        owner {
-                            login
+    @property
+    def document(self) -> graphql.DocumentNode:
+        return gql.gql(
+            """
+            query myOrgRepos($query: String!, $limit: Int!, $after: String) {
+                search(query: $query, type: REPOSITORY, first: $limit, after: $after) {
+                    nodes {
+                        ... on Repository {
+                            name
+                            owner {
+                                login
+                            }
                         }
                     }
-                }
-                pageInfo {
-                    endCursor
-                    hasNextPage
+                    pageInfo {
+                        endCursor
+                        hasNextPage
+                    }
                 }
             }
-        }
-        """
-    )
+            """
+        )
 
     @property
     def params(self) -> dict[str, typing.Any]:
@@ -79,7 +84,7 @@ class GetRepositoriesResponse(BaseResponse):
             owner: Owner
 
         class PageInfo(BaseModel):
-            end_cursor: str
+            end_cursor: str | None
             has_next_page: bool
 
         nodes: list[Repository]
@@ -97,33 +102,35 @@ class GetRepositoriesResponse(BaseResponse):
         ]
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class GetRepositoryIssuesRequest(BaseRequest):
     owner: str
     repository: str
     created_after: datetime.datetime
     limit: int = 100
 
-    document: graphql.DocumentNode = gql.gql(
-        """
-        query getIssues($query: String!, $limit: Int!) {
-            search(query: $query, type: ISSUE, first: $limit) {
-                nodes {
-                    ... on Issue {
-                        id
-                        url
-                        title
-                        body
-                        createdAt
-                        author {
-                            login
+    @property
+    def document(self) -> graphql.DocumentNode:
+        return gql.gql(
+            """
+            query getIssues($query: String!, $limit: Int!) {
+                search(query: $query, type: ISSUE, first: $limit) {
+                    nodes {
+                        ... on Issue {
+                            id
+                            url
+                            title
+                            body
+                            createdAt
+                            author {
+                                login
+                            }
                         }
                     }
                 }
             }
-        }
-        """
-    )
+            """
+        )
 
     @property
     def params(self) -> dict[str, typing.Any]:
@@ -170,33 +177,35 @@ class GetRepositoryIssuesResponse(BaseResponse):
         ]
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class GetRepositoryPRsRequest(BaseRequest):
     owner: str
     repository: str
     created_after: datetime.datetime
     limit: int = 100
 
-    document: graphql.DocumentNode = gql.gql(
-        """
-        query getPRs($query: String!, $limit: Int!) {
-            search(query: $query, type: ISSUE, first: $limit) {
-                nodes {
-                    ... on PullRequest {
-                        id
-                        url
-                        title
-                        body
-                        createdAt
-                        author {
-                            login
+    @property
+    def document(self) -> graphql.DocumentNode:
+        return gql.gql(
+            """
+            query getPRs($query: String!, $limit: Int!) {
+                search(query: $query, type: ISSUE, first: $limit) {
+                    nodes {
+                        ... on PullRequest {
+                            id
+                            url
+                            title
+                            body
+                            createdAt
+                            author {
+                                login
+                            }
                         }
                     }
                 }
             }
-        }
-        """
-    )
+            """
+        )
 
     @property
     def params(self) -> dict[str, typing.Any]:
@@ -243,15 +252,16 @@ class GetRepositoryPRsResponse(BaseResponse):
         ]
 
 
+@dataclasses.dataclass(frozen=True)
 class GqlGithubClient:
-    def __init__(self, token: str) -> None:
-        self._token = token
+    token: str
 
     @contextlib.asynccontextmanager
-    async def gql_client(self) -> typing.AsyncGenerator[gql.Client, None]:
+    async def _gql_client(self) -> typing.AsyncGenerator[gql.Client, None]:
         gql_transport = gql_aiohttp.AIOHTTPTransport(
             url="https://api.github.com/graphql",
-            headers={"Authorization": f"Bearer {self._token}"},
+            headers={"Authorization": f"Bearer {self.token}"},
+            ssl=True,
         )
         gql_client = gql.Client(
             transport=gql_transport,
@@ -268,7 +278,7 @@ class GqlGithubClient:
         response_model: type[ResponseT],
     ) -> ResponseT:
         logger.debug("Requesting document(%s) params(%s)", request.document, request.params)
-        async with self.gql_client() as gql_client:
+        async with self._gql_client() as gql_client:
             response = await gql_client.execute_async(
                 document=request.document,
                 variable_values=request.params,
@@ -277,19 +287,32 @@ class GqlGithubClient:
 
         return parsed_response
 
+    async def _get_repositories(
+        self,
+        request: GetRepositoriesRequest,
+    ) -> GetRepositoriesResponse:
+        return await self._request(request, GetRepositoriesResponse)
+
     async def get_repositories(
         self,
         request: GetRepositoriesRequest,
-    ) -> list[github_models.Repository]:
-        result: list[github_models.Repository] = []
+    ) -> typing.AsyncGenerator[github_models.Repository, None]:
+        after = request.after
         while True:
-            response = await self._request(request, GetRepositoriesResponse)
-            result.extend(response.to_dataclass())
+            response = await self._get_repositories(
+                request=GetRepositoriesRequest(
+                    owner=request.owner,
+                    limit=request.limit,
+                    after=after,
+                ),
+            )
+            for repository in response.to_dataclass():
+                yield repository
             if not response.search.page_info.has_next_page:
                 break
-            request.after = response.search.page_info.end_cursor
 
-        return result
+            after = response.search.page_info.end_cursor
+            assert after is not None
 
     async def get_repository_issues(
         self,
