@@ -19,7 +19,7 @@ class BaseTriggerConfig(pydantic_utils.IDMixinModel, pydantic_utils.TypedBaseMod
         return trigger_config_factory(data)
 
 
-class TriggerProcessor[ConfigT: BaseTriggerConfig](abc.ABC):
+class BaseTriggerProcessor[ConfigT: BaseTriggerConfig](abc.ABC):
     @classmethod
     @abc.abstractmethod
     def from_config(
@@ -36,7 +36,7 @@ class TriggerProcessor[ConfigT: BaseTriggerConfig](abc.ABC):
 @dataclasses.dataclass(frozen=True)
 class RegistryRecord[ConfigT: BaseTriggerConfig]:
     config_class: type[ConfigT]
-    processor_class: type[TriggerProcessor[ConfigT]]
+    processor_class: type[BaseTriggerProcessor[ConfigT]]
 
 
 _REGISTRY: dict[str, RegistryRecord[typing.Any]] = {}
@@ -45,7 +45,7 @@ _REGISTRY: dict[str, RegistryRecord[typing.Any]] = {}
 def register_trigger[ConfigT: BaseTriggerConfig](
     name: str,
     config_class: type[ConfigT],
-    processor_class: type[TriggerProcessor[ConfigT]],
+    processor_class: type[BaseTriggerProcessor[ConfigT]],
 ) -> None:
     _REGISTRY[name] = RegistryRecord(config_class=config_class, processor_class=processor_class)
 
@@ -71,7 +71,7 @@ def trigger_processor_factory(
 
 __all__ = [
     "BaseTriggerConfig",
-    "TriggerProcessor",
+    "BaseTriggerProcessor",
     "TriggerProcessorProtocol",
     "register_trigger",
     "trigger_config_factory",

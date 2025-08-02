@@ -1,7 +1,7 @@
 from .action import (
-    ActionProcessor,
     ActionProcessorProtocol,
     BaseActionConfig,
+    BaseActionProcessor,
     action_config_factory,
     action_processor_factory,
     register_action,
@@ -16,7 +16,7 @@ from .secret import (
 from .task import BaseTaskConfig, CronTaskConfig, OncePerRunTaskConfig
 from .trigger import (
     BaseTriggerConfig,
-    TriggerProcessor,
+    BaseTriggerProcessor,
     TriggerProcessorProtocol,
     register_trigger,
     trigger_config_factory,
@@ -24,18 +24,18 @@ from .trigger import (
 )
 
 __all__ = [
-    "ActionProcessor",
     "ActionProcessorProtocol",
     "BaseActionConfig",
+    "BaseActionProcessor",
     "BaseSecretConfig",
     "BaseTaskConfig",
     "BaseTriggerConfig",
+    "BaseTriggerProcessor",
     "CronTaskConfig",
     "EnvSecretConfig",
     "Event",
     "OncePerRunTaskConfig",
     "RootConfig",
-    "TriggerProcessor",
     "TriggerProcessorProtocol",
     "action_config_factory",
     "action_processor_factory",

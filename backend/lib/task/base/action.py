@@ -18,7 +18,7 @@ class BaseActionConfig(pydantic_utils.IDMixinModel, pydantic_utils.TypedBaseMode
         return action_config_factory(data)
 
 
-class ActionProcessor[ConfigT: BaseActionConfig](abc.ABC):
+class BaseActionProcessor[ConfigT: BaseActionConfig](abc.ABC):
     @classmethod
     @abc.abstractmethod
     def from_config(
@@ -35,7 +35,7 @@ class ActionProcessor[ConfigT: BaseActionConfig](abc.ABC):
 @dataclasses.dataclass(frozen=True)
 class RegistryRecord[ConfigT: BaseActionConfig]:
     config_class: type[ConfigT]
-    processor_class: type[ActionProcessor[ConfigT]]
+    processor_class: type[BaseActionProcessor[ConfigT]]
 
 
 _REGISTRY: dict[str, RegistryRecord[typing.Any]] = {}
@@ -44,7 +44,7 @@ _REGISTRY: dict[str, RegistryRecord[typing.Any]] = {}
 def register_action[ConfigT: BaseActionConfig](
     name: str,
     config_class: type[ConfigT],
-    processor_class: type[ActionProcessor[ConfigT]],
+    processor_class: type[BaseActionProcessor[ConfigT]],
 ) -> None:
     _REGISTRY[name] = RegistryRecord(config_class=config_class, processor_class=processor_class)
 
@@ -68,9 +68,9 @@ def action_processor_factory(
 
 
 __all__ = [
-    "ActionProcessor",
     "ActionProcessorProtocol",
     "BaseActionConfig",
+    "BaseActionProcessor",
     "action_config_factory",
     "action_processor_factory",
     "register_action",

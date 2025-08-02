@@ -23,7 +23,7 @@ class TelegramWebhookActionConfig(task_base.BaseActionConfig):
 
 
 @dataclasses.dataclass(frozen=True)
-class TelegramWebhookProcessor(task_base.ActionProcessor[TelegramWebhookActionConfig]):
+class TelegramWebhookProcessor(task_base.BaseActionProcessor[TelegramWebhookActionConfig]):
     config: TelegramWebhookActionConfig
     aiohttp_client: aiohttp.ClientSession
     telegram_client: telegram_clients.RestTelegramClient

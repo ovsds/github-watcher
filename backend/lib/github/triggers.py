@@ -221,7 +221,7 @@ class GithubTriggerState(pydantic_utils.BaseModel):
 
 
 @dataclasses.dataclass(frozen=True)
-class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
+class GithubTriggerProcessor(task_base.BaseTriggerProcessor[GithubTriggerConfig]):
     config: GithubTriggerConfig
     raw_state: lib.task.protocols.StateProtocol
     gql_github_client: github_clients.GqlGithubClient
@@ -258,26 +258,33 @@ class GithubTriggerProcessor(task_base.TriggerProcessor[GithubTriggerConfig]):
             finally:
                 await self.raw_state.set(state.model_dump(mode="json"))
 
-    async def produce_events(self) -> typing.AsyncGenerator[task_base.Event, None]:
-        repositories: list[github_models.Repository] = []
+    async def _get_repositories(self) -> list[github_models.Repository]:
+        request = github_clients.GetRepositoriesRequest(
+            owner=self.config.owner,
+        )
 
-        async for repository in self.gql_github_client.get_repositories(
-            github_clients.GetRepositoriesRequest(
-                owner=self.config.owner,
-            )
-        ):
+        result: list[github_models.Repository] = []
+
+        async for repository in self.gql_github_client.get_repositories(request):
             if self.config.is_repository_applicable(repository):
-                repositories.append(repository)
+                result.append(repository)
+
+        return result
+
+    async def produce_events(self) -> typing.AsyncGenerator[task_base.Event, None]:
+        repositories = await self._get_repositories()
 
         async with self._acquire_state() as state:
-            async for event in asyncio_utils.GatherIterators(
+            iterators = (
                 self._process_subtrigger_factory(
                     subtrigger=subtrigger,
                     state=state,
                     repositories=repositories,
                 )
                 for subtrigger in self.config.subtriggers
-            ):
+            )
+
+            async for event in asyncio_utils.GatherIterators(iterators):
                 yield event
 
     def _process_subtrigger_factory(

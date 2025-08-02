@@ -15,6 +15,14 @@ class BaseSecretConfig(pydantic_utils.TypedBaseModel):
     def value(self) -> typing.Any: ...
 
 
+class PlainSecretConfig(BaseSecretConfig):
+    plain_value: str
+
+    @property
+    def value(self) -> str:
+        return self.plain_value
+
+
 class EnvSecretConfig(BaseSecretConfig):
     key: str
 
@@ -29,6 +37,7 @@ class EnvSecretConfig(BaseSecretConfig):
 def register_default_plugins() -> None:
     logger.info("Registering default task base secret plugins")
     BaseSecretConfig.register("env", EnvSecretConfig)
+    BaseSecretConfig.register("plain", PlainSecretConfig)
 
 
 __all__ = [
