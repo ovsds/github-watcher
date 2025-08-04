@@ -5,6 +5,7 @@ import logging
 import typing
 
 import aiohttp
+import pydantic
 
 import lib.github.models as github_models
 import lib.utils.pydantic as pydantic_utils
@@ -31,6 +32,7 @@ class BaseResponse(pydantic_utils.BaseModel):
         raise NotImplementedError
 
 
+# https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-repository
 @dataclasses.dataclass(frozen=True)
 class GetRepositoryWorkflowRunsRequest(BaseRequest):
     owner: str
@@ -84,10 +86,54 @@ class GetRepositoryWorkflowRunsResponse(BaseResponse):
         ]
 
 
+# https://docs.github.com/en/rest/teams/members#list-team-members
+@dataclasses.dataclass(frozen=True)
+class GetOrganizationTeamMembersRequest(BaseRequest):
+    owner: github_models.OwnerName
+    team_slug: github_models.TeamSlug
+
+    role: typing.Literal["member", "maintainer", "all"] = "all"
+    per_page: int = 100
+    page: int = 1
+
+    @property
+    def method(self) -> str:
+        return "GET"
+
+    @property
+    def url(self) -> str:
+        return f"https://api.github.com/orgs/{self.owner}/teams/{self.team_slug}/members"
+
+    @property
+    def params(self) -> dict[str, typing.Any]:
+        return {
+            "role": self.role,
+            "per_page": self.per_page,
+            "page": self.page,
+        }
+
+
+class _TeamMember(pydantic_utils.BaseModel):
+    login: github_models.UserLogin
+
+
+class GetOrganizationTeamMembersResponse(BaseResponse, pydantic.RootModel[list[_TeamMember]]):
+    root: list[_TeamMember]
+
+    def to_dataclass(self) -> list[github_models.UserLogin]:
+        return [member.login for member in self.root]
+
+
 @dataclasses.dataclass(frozen=True)
 class RestGithubClient:
     aiohttp_client: aiohttp.ClientSession
     token: str
+
+    class BaseError(Exception): ...
+
+    class NotFoundError(BaseError): ...
+
+    class UnknownResponseError(BaseError): ...
 
     @classmethod
     def from_token(cls, token: str) -> typing.Self:
@@ -97,11 +143,10 @@ class RestGithubClient:
     async def dispose(self) -> None:
         await self.aiohttp_client.close()
 
-    async def _request[ResponseT: BaseResponse](
+    async def _request(
         self,
         request: BaseRequest,
-        response_model: type[ResponseT],
-    ) -> ResponseT:
+    ) -> typing.Any:
         headers = {
             "Authorization": f"Bearer {self.token}",
             "Accept": "application/vnd.github.v3+json",
@@ -114,14 +159,19 @@ class RestGithubClient:
             headers=headers,
         ) as response:
             response.raise_for_status()
-            data = await response.json()
-            return response_model.model_validate(data)
+            return await response.json()
 
     async def _get_repository_workflow_runs(
         self,
         request: GetRepositoryWorkflowRunsRequest,
     ) -> GetRepositoryWorkflowRunsResponse:
-        return await self._request(request, GetRepositoryWorkflowRunsResponse)
+        try:
+            raw_data = await self._request(request)
+        except aiohttp.ClientResponseError as e:  # pragma: no cover
+            logger.exception("Unknown response error")
+            raise self.UnknownResponseError from e
+
+        return GetRepositoryWorkflowRunsResponse.model_validate(raw_data)
 
     async def get_repository_workflow_runs(
         self,
@@ -147,8 +197,46 @@ class RestGithubClient:
 
             page += 1
 
+    async def _get_organization_team_members(
+        self,
+        request: GetOrganizationTeamMembersRequest,
+    ) -> GetOrganizationTeamMembersResponse:
+        try:
+            raw_data = await self._request(request)
+            return GetOrganizationTeamMembersResponse.model_validate(raw_data)
+        except aiohttp.ClientResponseError as e:
+            if e.status == 404:
+                logger.info(e.message)
+                raise self.NotFoundError from e
+
+            logger.exception("Unknown response error")  # pragma: no cover
+            raise self.UnknownResponseError from e  # pragma: no cover
+
+    async def get_organization_team_members(
+        self,
+        request: GetOrganizationTeamMembersRequest,
+    ) -> typing.AsyncGenerator[github_models.UserLogin, None]:
+        page = request.page
+        while True:
+            response = await self._get_organization_team_members(
+                request=GetOrganizationTeamMembersRequest(
+                    owner=request.owner,
+                    team_slug=request.team_slug,
+                    page=page,
+                    per_page=request.per_page,
+                ),
+            )
+            if not response.root:
+                return
+
+            for member in response.to_dataclass():
+                yield member
+
+            page += 1
+
 
 __all__ = [
+    "GetOrganizationTeamMembersRequest",
     "GetRepositoryWorkflowRunsRequest",
     "RestGithubClient",
 ]

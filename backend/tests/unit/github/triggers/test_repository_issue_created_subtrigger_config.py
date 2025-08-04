@@ -19,7 +19,7 @@ def issue_fixture() -> github_models.Issue:
 
 
 def test_is_applicable_default(issue: github_models.Issue):
-    config = github_triggers.SubtriggerConfig.factory(
+    config = github_triggers.BaseSubtriggerConfig.factory(
         data={
             "type": "repository_issue_created",
             "id": "test_id",
@@ -30,7 +30,7 @@ def test_is_applicable_default(issue: github_models.Issue):
 
 
 def test_is_applicable_include_author(issue: github_models.Issue):
-    config = github_triggers.SubtriggerConfig.factory(
+    config = github_triggers.BaseSubtriggerConfig.factory(
         data={
             "type": "repository_issue_created",
             "id": "test_id",
@@ -42,7 +42,7 @@ def test_is_applicable_include_author(issue: github_models.Issue):
 
 
 def test_is_applicable_include_author_not_matching(issue: github_models.Issue):
-    config = github_triggers.SubtriggerConfig.factory(
+    config = github_triggers.BaseSubtriggerConfig.factory(
         data={
             "type": "repository_issue_created",
             "id": "test_id",
@@ -54,7 +54,7 @@ def test_is_applicable_include_author_not_matching(issue: github_models.Issue):
 
 
 def test_is_applicable_exclude_author(issue: github_models.Issue):
-    config = github_triggers.SubtriggerConfig.factory(
+    config = github_triggers.BaseSubtriggerConfig.factory(
         data={
             "type": "repository_issue_created",
             "id": "test_id",
@@ -66,7 +66,7 @@ def test_is_applicable_exclude_author(issue: github_models.Issue):
 
 
 def test_is_applicable_exclude_author_matching(issue: github_models.Issue):
-    config = github_triggers.SubtriggerConfig.factory(
+    config = github_triggers.BaseSubtriggerConfig.factory(
         data={
             "type": "repository_issue_created",
             "id": "test_id",
@@ -78,7 +78,7 @@ def test_is_applicable_exclude_author_matching(issue: github_models.Issue):
 
 
 def test_is_applicable_include_and_exclude_author(issue: github_models.Issue):
-    config = github_triggers.SubtriggerConfig.factory(
+    config = github_triggers.BaseSubtriggerConfig.factory(
         data={
             "type": "repository_issue_created",
             "id": "test_id",
@@ -91,7 +91,7 @@ def test_is_applicable_include_and_exclude_author(issue: github_models.Issue):
 
 
 def test_is_applicable_include_title(issue: github_models.Issue):
-    config = github_triggers.SubtriggerConfig.factory(
+    config = github_triggers.BaseSubtriggerConfig.factory(
         data={
             "type": "repository_issue_created",
             "id": "test_id",
@@ -103,7 +103,7 @@ def test_is_applicable_include_title(issue: github_models.Issue):
 
 
 def test_is_applicable_include_title_not_matching(issue: github_models.Issue):
-    config = github_triggers.SubtriggerConfig.factory(
+    config = github_triggers.BaseSubtriggerConfig.factory(
         data={
             "type": "repository_issue_created",
             "id": "test_id",
@@ -115,7 +115,7 @@ def test_is_applicable_include_title_not_matching(issue: github_models.Issue):
 
 
 def test_is_applicable_exclude_title(issue: github_models.Issue):
-    config = github_triggers.SubtriggerConfig.factory(
+    config = github_triggers.BaseSubtriggerConfig.factory(
         data={
             "type": "repository_issue_created",
             "id": "test_id",
@@ -127,7 +127,7 @@ def test_is_applicable_exclude_title(issue: github_models.Issue):
 
 
 def test_is_applicable_exclude_title_matching(issue: github_models.Issue):
-    config = github_triggers.SubtriggerConfig.factory(
+    config = github_triggers.BaseSubtriggerConfig.factory(
         data={
             "type": "repository_issue_created",
             "id": "test_id",
@@ -139,7 +139,7 @@ def test_is_applicable_exclude_title_matching(issue: github_models.Issue):
 
 
 def test_is_applicable_include_and_exclude_title(issue: github_models.Issue):
-    config = github_triggers.SubtriggerConfig.factory(
+    config = github_triggers.BaseSubtriggerConfig.factory(
         data={
             "type": "repository_issue_created",
             "id": "test_id",
@@ -152,7 +152,7 @@ def test_is_applicable_include_and_exclude_title(issue: github_models.Issue):
 
 
 def test_is_applicable_include_regex_title(issue: github_models.Issue):
-    config = github_triggers.SubtriggerConfig.factory(
+    config = github_triggers.BaseSubtriggerConfig.factory(
         data={
             "type": "repository_issue_created",
             "id": "test_id",
@@ -164,7 +164,7 @@ def test_is_applicable_include_regex_title(issue: github_models.Issue):
 
 
 def test_is_applicable_include_regex_title_not_matching(issue: github_models.Issue):
-    config = github_triggers.SubtriggerConfig.factory(
+    config = github_triggers.BaseSubtriggerConfig.factory(
         data={
             "type": "repository_issue_created",
             "id": "test_id",
@@ -176,7 +176,7 @@ def test_is_applicable_include_regex_title_not_matching(issue: github_models.Iss
 
 
 def test_is_applicable_exclude_regex_title(issue: github_models.Issue):
-    config = github_triggers.SubtriggerConfig.factory(
+    config = github_triggers.BaseSubtriggerConfig.factory(
         data={
             "type": "repository_issue_created",
             "id": "test_id",
@@ -188,7 +188,7 @@ def test_is_applicable_exclude_regex_title(issue: github_models.Issue):
 
 
 def test_is_applicable_exclude_regex_title_matching(issue: github_models.Issue):
-    config = github_triggers.SubtriggerConfig.factory(
+    config = github_triggers.BaseSubtriggerConfig.factory(
         data={
             "type": "repository_issue_created",
             "id": "test_id",
@@ -200,7 +200,7 @@ def test_is_applicable_exclude_regex_title_matching(issue: github_models.Issue):
 
 
 def test_is_applicable_include_and_exclude_regex_title(issue: github_models.Issue):
-    config = github_triggers.SubtriggerConfig.factory(
+    config = github_triggers.BaseSubtriggerConfig.factory(
         data={
             "type": "repository_issue_created",
             "id": "test_id",
@@ -213,7 +213,7 @@ def test_is_applicable_include_and_exclude_regex_title(issue: github_models.Issu
 
 
 def test_is_applicable_include_and_include_regex_title(issue: github_models.Issue):
-    config = github_triggers.SubtriggerConfig.factory(
+    config = github_triggers.BaseSubtriggerConfig.factory(
         data={
             "type": "repository_issue_created",
             "id": "test_id",

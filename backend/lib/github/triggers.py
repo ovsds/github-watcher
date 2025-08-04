@@ -18,7 +18,7 @@ import lib.utils.pydantic as pydantic_utils
 logger = logging.getLogger(__name__)
 
 
-class SubtriggerConfig(pydantic_utils.TypedBaseModel, pydantic_utils.IDMixinModel):
+class BaseSubtriggerConfig(pydantic_utils.TypedBaseModel, pydantic_utils.IDMixinModel):
     @pydantic.model_validator(mode="before")
     @classmethod
     def set_default_id(cls, data: dict[str, typing.Any]) -> dict[str, typing.Any]:
@@ -27,18 +27,18 @@ class SubtriggerConfig(pydantic_utils.TypedBaseModel, pydantic_utils.IDMixinMode
         return data
 
 
-def _check_match(string: str, items: list[str] | None = None) -> bool:
+def _check_match(string: str, items: set[str] | None = None) -> bool:
     return items is not None and len(items) != 0 and string in items
 
 
-def _check_regex_match(string: str, regex_items: list[str] | None = None) -> bool:
+def _check_regex_match(string: str, regex_items: set[str] | None = None) -> bool:
     return regex_items is not None and len(regex_items) != 0 and any(re.match(regex, string) for regex in regex_items)
 
 
 def _check_included(
     string: str,
-    include: list[str] | None = None,
-    include_regex: list[str] | None = None,
+    include: set[str] | None = None,
+    include_regex: set[str] | None = None,
 ) -> bool:
     return (
         (not include and not include_regex)
@@ -49,35 +49,43 @@ def _check_included(
 
 def _check_excluded(
     string: str,
-    exclude: list[str] | None = None,
-    exclude_regex: list[str] | None = None,
+    exclude: set[str] | None = None,
+    exclude_regex: set[str] | None = None,
 ) -> bool:
     return _check_match(string, exclude) or _check_regex_match(string, exclude_regex)
 
 
 def _check_applicable(
     string: str,
-    include: list[str] | None = None,
-    exclude: list[str] | None = None,
-    include_regex: list[str] | None = None,
-    exclude_regex: list[str] | None = None,
+    include: set[str] | None = None,
+    exclude: set[str] | None = None,
+    include_regex: set[str] | None = None,
+    exclude_regex: set[str] | None = None,
 ) -> bool:
     return _check_included(string, include=include, include_regex=include_regex) and not _check_excluded(
         string, exclude=exclude, exclude_regex=exclude_regex
     )
 
 
-class RepositoryIssueCreatedSubtriggerConfig(SubtriggerConfig):
+class RepositoryIssueCreatedSubtriggerConfig(BaseSubtriggerConfig):
     type_name: str = "repository_issue_created"
 
-    include_author: list[str] = pydantic.Field(default_factory=list)
-    exclude_author: list[str] = pydantic.Field(default_factory=list)
-    include_title: list[str] = pydantic.Field(default_factory=list)
-    exclude_title: list[str] = pydantic.Field(default_factory=list)
-    include_title_regex: list[str] = pydantic.Field(default_factory=list)
-    exclude_title_regex: list[str] = pydantic.Field(default_factory=list)
+    include_author: set[github_models.UserLogin] = pydantic.Field(default_factory=set)
+    exclude_author: set[github_models.UserLogin] = pydantic.Field(default_factory=set)
+    include_author_group: set[github_models.TeamSlug] = pydantic.Field(default_factory=set)
+    exclude_author_group: set[github_models.TeamSlug] = pydantic.Field(default_factory=set)
+
+    include_title: set[str] = pydantic.Field(default_factory=set)
+    exclude_title: set[str] = pydantic.Field(default_factory=set)
+    include_title_regex: set[str] = pydantic.Field(default_factory=set)
+    exclude_title_regex: set[str] = pydantic.Field(default_factory=set)
 
     def is_applicable(self, issue: github_models.Issue) -> bool:
+        if self.include_author_group:
+            raise NotImplementedError("include_author_group must be resolved before is_applicable")
+        if self.exclude_author_group:
+            raise NotImplementedError("exclude_author_group must be resolved before is_applicable")
+
         if issue.author is not None and not _check_applicable(
             issue.author,
             include=self.include_author,
@@ -96,13 +104,23 @@ class RepositoryIssueCreatedSubtriggerConfig(SubtriggerConfig):
         return True
 
 
-class RepositoryPRCreatedSubtriggerConfig(SubtriggerConfig):
+class RepositoryPRCreatedSubtriggerConfig(BaseSubtriggerConfig):
     type_name: str = "repository_pr_created"
 
-    include_author: list[str] = pydantic.Field(default_factory=list)
-    exclude_author: list[str] = pydantic.Field(default_factory=list)
+    include_author: set[github_models.UserLogin] = pydantic.Field(default_factory=set)
+    exclude_author: set[github_models.UserLogin] = pydantic.Field(default_factory=set)
+    include_author_group: set[github_models.TeamSlug] = pydantic.Field(default_factory=set)
+    exclude_author_group: set[github_models.TeamSlug] = pydantic.Field(default_factory=set)
 
-    def is_applicable(self, pr: github_models.PullRequest) -> bool:
+    def is_applicable(
+        self,
+        pr: github_models.PullRequest,
+    ) -> bool:
+        if self.include_author_group:
+            raise NotImplementedError("include_author_group must be resolved before is_applicable")
+        if self.exclude_author_group:
+            raise NotImplementedError("exclude_author_group must be resolved before is_applicable")
+
         if pr.author is not None and not _check_applicable(
             pr.author,
             include=self.include_author,
@@ -113,11 +131,11 @@ class RepositoryPRCreatedSubtriggerConfig(SubtriggerConfig):
         return True
 
 
-class RepositoryFailedWorkflowRunSubtriggerConfig(SubtriggerConfig):
+class RepositoryFailedWorkflowRunSubtriggerConfig(BaseSubtriggerConfig):
     type_name: str = "repository_failed_workflow_run"
 
-    include: list[str] = pydantic.Field(default_factory=list)
-    exclude: list[str] = pydantic.Field(default_factory=list)
+    include: set[str] = pydantic.Field(default_factory=set)
+    exclude: set[str] = pydantic.Field(default_factory=set)
 
     def is_applicable(self, workflow_run: github_models.WorkflowRun) -> bool:
         if workflow_run.status != "completed":
@@ -137,13 +155,13 @@ class RepositoryFailedWorkflowRunSubtriggerConfig(SubtriggerConfig):
 class GithubTriggerConfig(task_base.BaseTriggerConfig):
     token_secret: pydantic_utils.TypedAnnotation[task_base.BaseSecretConfig]
     owner: str
-    repos: list[str] = pydantic.Field(default_factory=list)  # TODO 1.0.0: remove
-    include_repos: list[str] = pydantic.Field(default_factory=list)
-    exclude_repos: list[str] = pydantic.Field(default_factory=list)
+    repos: list[github_models.RepositoryName] = pydantic.Field(default_factory=list)  # TODO 1.0.0: remove
+    include_repos: list[github_models.RepositoryName] = pydantic.Field(default_factory=list)
+    exclude_repos: list[github_models.RepositoryName] = pydantic.Field(default_factory=list)
     default_timedelta_seconds: int = 60 * 60 * 24  # 1 day
     subtriggers: typing.Annotated[
-        list[pydantic.SerializeAsAny[SubtriggerConfig]],
-        pydantic.BeforeValidator(SubtriggerConfig.list_factory),
+        list[pydantic.SerializeAsAny[BaseSubtriggerConfig]],
+        pydantic.BeforeValidator(BaseSubtriggerConfig.list_factory),
         pydantic.AfterValidator(pydantic_utils.check_unique_ids),
     ]
 
@@ -256,7 +274,8 @@ class GithubTriggerProcessor(task_base.BaseTriggerProcessor[GithubTriggerConfig]
             try:
                 yield state
             finally:
-                await self.raw_state.set(state.model_dump(mode="json"))
+                raw_state = state.model_dump(mode="json")
+                await self.raw_state.set(raw_state)
 
     async def _get_repositories(self) -> list[github_models.Repository]:
         request = github_clients.GetRepositoriesRequest(
@@ -271,17 +290,30 @@ class GithubTriggerProcessor(task_base.BaseTriggerProcessor[GithubTriggerConfig]
 
         return result
 
+    async def _resolve_author_groups(self, groups: set[github_models.TeamSlug]) -> set[github_models.UserLogin]:
+        result: set[github_models.UserLogin] = set()
+        for group in groups:
+            async for member in self.rest_github_client.get_organization_team_members(
+                request=github_clients.GetOrganizationTeamMembersRequest(
+                    owner=self.config.owner,
+                    team_slug=group,
+                ),
+            ):
+                result.add(member)
+
+        return result
+
     async def produce_events(self) -> typing.AsyncGenerator[task_base.Event, None]:
         repositories = await self._get_repositories()
 
         async with self._acquire_state() as state:
             iterators = (
                 self._process_subtrigger_factory(
-                    subtrigger=subtrigger,
+                    config=subtrigger_config,
                     state=state,
                     repositories=repositories,
                 )
-                for subtrigger in self.config.subtriggers
+                for subtrigger_config in self.config.subtriggers
             )
 
             async for event in asyncio_utils.GatherIterators(iterators):
@@ -289,41 +321,46 @@ class GithubTriggerProcessor(task_base.BaseTriggerProcessor[GithubTriggerConfig]
 
     def _process_subtrigger_factory(
         self,
-        subtrigger: SubtriggerConfig,
+        config: BaseSubtriggerConfig,
         state: GithubTriggerState,
         repositories: list[github_models.Repository],
     ) -> typing.AsyncGenerator[task_base.Event, None]:
-        if isinstance(subtrigger, RepositoryIssueCreatedSubtriggerConfig):
+        if isinstance(config, RepositoryIssueCreatedSubtriggerConfig):
             return self._process_all_repository_issue_created(
                 state=state,
-                subtrigger=subtrigger,
+                config=config,
                 repositories=repositories,
             )
-        if isinstance(subtrigger, RepositoryPRCreatedSubtriggerConfig):
+        if isinstance(config, RepositoryPRCreatedSubtriggerConfig):
             return self._process_all_repository_pr_created(
                 state=state,
-                subtrigger=subtrigger,
+                config=config,
                 repositories=repositories,
             )
-        if isinstance(subtrigger, RepositoryFailedWorkflowRunSubtriggerConfig):
+        if isinstance(config, RepositoryFailedWorkflowRunSubtriggerConfig):
             return self._process_all_repository_failed_workflow_run(
                 state=state,
-                subtrigger=subtrigger,
+                config=config,
                 repositories=repositories,
             )
 
-        raise ValueError(f"Unknown subtrigger: {subtrigger}")
+        raise ValueError(f"Unknown subtrigger: {config}")
 
     async def _process_all_repository_issue_created(
         self,
         state: GithubTriggerState,
-        subtrigger: RepositoryIssueCreatedSubtriggerConfig,
+        config: RepositoryIssueCreatedSubtriggerConfig,
         repositories: list[github_models.Repository],
     ) -> typing.AsyncGenerator[task_base.Event, None]:
+        config.include_author |= await self._resolve_author_groups(config.include_author_group)
+        config.include_author_group = set()
+        config.exclude_author |= await self._resolve_author_groups(config.exclude_author_group)
+        config.exclude_author_group = set()
+
         async for event in asyncio_utils.GatherIterators(
             self._process_repository_issue_created(
                 state=state,
-                subtrigger=subtrigger,
+                config=config,
                 repository=repository.name,
             )
             for repository in repositories
@@ -333,7 +370,7 @@ class GithubTriggerProcessor(task_base.BaseTriggerProcessor[GithubTriggerConfig]
     async def _process_repository_issue_created(
         self,
         state: GithubTriggerState,
-        subtrigger: RepositoryIssueCreatedSubtriggerConfig,
+        config: RepositoryIssueCreatedSubtriggerConfig,
         repository: str,
     ) -> typing.AsyncGenerator[task_base.Event, None]:
         if repository not in state.repository_issue_created:
@@ -355,7 +392,7 @@ class GithubTriggerProcessor(task_base.BaseTriggerProcessor[GithubTriggerConfig]
                 break
 
             for issue in issues:
-                if subtrigger.is_applicable(issue):
+                if config.is_applicable(issue):
                     yield task_base.Event(
                         id=f"issue_created__{issue.id}",
                         title=f"📋New issue in {self.config.owner}/{repository}",
@@ -368,13 +405,18 @@ class GithubTriggerProcessor(task_base.BaseTriggerProcessor[GithubTriggerConfig]
     async def _process_all_repository_pr_created(
         self,
         state: GithubTriggerState,
-        subtrigger: RepositoryPRCreatedSubtriggerConfig,
+        config: RepositoryPRCreatedSubtriggerConfig,
         repositories: list[github_models.Repository],
     ) -> typing.AsyncGenerator[task_base.Event, None]:
+        config.include_author |= await self._resolve_author_groups(config.include_author_group)
+        config.include_author_group = set()
+        config.exclude_author |= await self._resolve_author_groups(config.exclude_author_group)
+        config.exclude_author_group = set()
+
         async for event in asyncio_utils.GatherIterators(
             self._process_repository_pr_created(
                 state=state,
-                subtrigger=subtrigger,
+                config=config,
                 repository=repository.name,
             )
             for repository in repositories
@@ -384,7 +426,7 @@ class GithubTriggerProcessor(task_base.BaseTriggerProcessor[GithubTriggerConfig]
     async def _process_repository_pr_created(
         self,
         state: GithubTriggerState,
-        subtrigger: RepositoryPRCreatedSubtriggerConfig,
+        config: RepositoryPRCreatedSubtriggerConfig,
         repository: str,
     ) -> typing.AsyncGenerator[task_base.Event, None]:
         if repository not in state.repository_pr_created:
@@ -406,7 +448,7 @@ class GithubTriggerProcessor(task_base.BaseTriggerProcessor[GithubTriggerConfig]
                 break
 
             for pr in prs:
-                if subtrigger.is_applicable(pr):
+                if config.is_applicable(pr):
                     yield task_base.Event(
                         id=f"pr_created__{pr.id}",
                         title=f"🛠New PR in {self.config.owner}/{repository}",
@@ -419,13 +461,13 @@ class GithubTriggerProcessor(task_base.BaseTriggerProcessor[GithubTriggerConfig]
     async def _process_all_repository_failed_workflow_run(
         self,
         state: GithubTriggerState,
-        subtrigger: RepositoryFailedWorkflowRunSubtriggerConfig,
+        config: RepositoryFailedWorkflowRunSubtriggerConfig,
         repositories: list[github_models.Repository],
     ) -> typing.AsyncGenerator[task_base.Event, None]:
         async for event in asyncio_utils.GatherIterators(
             self._process_repository_failed_workflow_run(
                 state=state,
-                subtrigger=subtrigger,
+                config=config,
                 repository=repository.name,
             )
             for repository in repositories
@@ -435,7 +477,7 @@ class GithubTriggerProcessor(task_base.BaseTriggerProcessor[GithubTriggerConfig]
     async def _process_repository_failed_workflow_run(
         self,
         state: GithubTriggerState,
-        subtrigger: RepositoryFailedWorkflowRunSubtriggerConfig,
+        config: RepositoryFailedWorkflowRunSubtriggerConfig,
         repository: str,
     ) -> typing.AsyncGenerator[task_base.Event, None]:
         if repository not in state.repository_failed_workflow_run:
@@ -454,10 +496,7 @@ class GithubTriggerProcessor(task_base.BaseTriggerProcessor[GithubTriggerConfig]
                 created_after=repository_state.oldest_incomplete_created,
             ),
         ):
-            if (
-                subtrigger.is_applicable(workflow_run)
-                and workflow_run not in repository_state.already_reported_failed_runs
-            ):
+            if config.is_applicable(workflow_run) and workflow_run not in repository_state.already_reported_failed_runs:
                 yield task_base.Event(
                     id=f"failed_workflow_run__{self.config.owner}__{repository}__{workflow_run.id}",
                     title=f"🔥Failed workflow run in {self.config.owner}/{repository}",
@@ -494,9 +533,9 @@ def register_default_plugins() -> None:
         processor_class=GithubTriggerProcessor,
     )
 
-    SubtriggerConfig.register("repository_issue_created", RepositoryIssueCreatedSubtriggerConfig)
-    SubtriggerConfig.register("repository_pr_created", RepositoryPRCreatedSubtriggerConfig)
-    SubtriggerConfig.register("repository_failed_workflow_run", RepositoryFailedWorkflowRunSubtriggerConfig)
+    BaseSubtriggerConfig.register("repository_issue_created", RepositoryIssueCreatedSubtriggerConfig)
+    BaseSubtriggerConfig.register("repository_pr_created", RepositoryPRCreatedSubtriggerConfig)
+    BaseSubtriggerConfig.register("repository_failed_workflow_run", RepositoryFailedWorkflowRunSubtriggerConfig)
 
 
 __all__ = [
