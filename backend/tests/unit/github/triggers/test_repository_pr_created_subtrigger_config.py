@@ -27,7 +27,7 @@ def test_is_applicable_default(pr: github_models.PullRequest):
 
 
 def test_is_applicable_include_author(pr: github_models.PullRequest):
-    config = github_triggers.SubtriggerConfig.factory(
+    config = github_triggers.BaseSubtriggerConfig.factory(
         data={
             "type": "repository_pr_created",
             "id": "test_id",
@@ -39,7 +39,7 @@ def test_is_applicable_include_author(pr: github_models.PullRequest):
 
 
 def test_is_applicable_include_author_not_matching(pr: github_models.PullRequest):
-    config = github_triggers.SubtriggerConfig.factory(
+    config = github_triggers.BaseSubtriggerConfig.factory(
         data={
             "type": "repository_pr_created",
             "id": "test_id",
@@ -51,7 +51,7 @@ def test_is_applicable_include_author_not_matching(pr: github_models.PullRequest
 
 
 def test_is_applicable_exclude_author(pr: github_models.PullRequest):
-    config = github_triggers.SubtriggerConfig.factory(
+    config = github_triggers.BaseSubtriggerConfig.factory(
         data={
             "type": "repository_pr_created",
             "id": "test_id",
@@ -63,7 +63,7 @@ def test_is_applicable_exclude_author(pr: github_models.PullRequest):
 
 
 def test_is_applicable_exclude_author_matching(pr: github_models.PullRequest):
-    config = github_triggers.SubtriggerConfig.factory(
+    config = github_triggers.BaseSubtriggerConfig.factory(
         data={
             "type": "repository_pr_created",
             "id": "test_id",

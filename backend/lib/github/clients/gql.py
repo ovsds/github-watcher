@@ -38,7 +38,7 @@ class BaseResponse(BaseModel):
 
 @dataclasses.dataclass(frozen=True)
 class GetRepositoriesRequest(BaseRequest):
-    owner: str
+    owner: github_models.OwnerName
     limit: int = 100
     after: str | None = None
 
@@ -78,9 +78,9 @@ class GetRepositoriesResponse(BaseResponse):
     class Search(BaseModel):
         class Repository(BaseModel):
             class Owner(BaseModel):
-                login: str
+                login: github_models.OwnerName
 
-            name: str
+            name: github_models.RepositoryName
             owner: Owner
 
         class PageInfo(BaseModel):
@@ -104,8 +104,8 @@ class GetRepositoriesResponse(BaseResponse):
 
 @dataclasses.dataclass(frozen=True)
 class GetRepositoryIssuesRequest(BaseRequest):
-    owner: str
-    repository: str
+    owner: github_models.OwnerName
+    repository: github_models.RepositoryName
     created_after: datetime.datetime
     limit: int = 100
 
@@ -150,7 +150,7 @@ class GetRepositoryIssuesResponse(BaseResponse):
     class Search(BaseModel):
         class Issue(BaseModel):
             class Author(BaseModel):
-                login: str
+                login: github_models.UserLogin
 
             id: str
             url: str
@@ -179,8 +179,8 @@ class GetRepositoryIssuesResponse(BaseResponse):
 
 @dataclasses.dataclass(frozen=True)
 class GetRepositoryPRsRequest(BaseRequest):
-    owner: str
-    repository: str
+    owner: github_models.OwnerName
+    repository: github_models.RepositoryName
     created_after: datetime.datetime
     limit: int = 100
 
@@ -225,7 +225,7 @@ class GetRepositoryPRsResponse(BaseResponse):
     class Search(BaseModel):
         class PR(BaseModel):
             class Author(BaseModel):
-                login: str
+                login: github_models.UserLogin
 
             id: str
             url: str
