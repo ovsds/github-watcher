@@ -12,9 +12,11 @@ vars:
     sh: find {{.SOURCE_FOLDERS}} -name '*.py' | tr '\n' ' '
 
   DEFAULT_IMAGE_NAME: "github-watcher"
+  SETTINGS_FOLDER: "{{.TASKFILE_DIR}}/.settings"
 
 env:
-  GITHUB_WATCHER_SETTINGS_YAML: example/settings.yaml
+  GITHUB_WATCHER_SETTINGS_YAML: "{{.SETTINGS_FOLDER}}/dev.yaml"
+  GITHUB_WATCHER_SETTINGS_TEST_YAML: "{{.SETTINGS_FOLDER}}/test.yaml"
 
 tasks:
   _python:
@@ -124,8 +126,9 @@ tasks:
       - echo 'Running image {{.TARGET}} target...'
       - docker run
         --env-file <( env| cut -f1 -d= )
-        --env GITHUB_WATCHER_SETTINGS_YAML=example/settings.yaml
-        --volume $(pwd)/example:/opt/app/example
+        --volume {{.SETTINGS_FOLDER}}:/opt/app/.settings
+        --env GITHUB_WATCHER_SETTINGS_YAML="/opt/app/.settings/dev.yaml"
+        --env GITHUB_WATCHER_SETTINGS_TEST_YAML="/opt/app/.settings/test.yaml"
         {{.DEFAULT_IMAGE_NAME}}:{{.TARGET}}
 
   image-scan:
@@ -223,7 +226,8 @@ tasks:
       - task: image-bake
         vars: { TARGET: runtime_dev }
       - task: image-run
-        vars: { TARGET: runtime }
+        vars:
+          TARGET: runtime
 
   update-from-template:
     desc: Update project from template

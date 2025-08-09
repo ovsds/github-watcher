@@ -1,13 +1,14 @@
 app:
+  env: development
   debug: true
 logs:
   level: DEBUG
 tasks:
   config_backend:
     type: yaml_file
-    path: example/config.yaml
+    path: .settings/config.yaml
   queue_backend:
     type: memory
   state_backend:
     type: local_dir
-    path: example/state
+    path: .settings/state

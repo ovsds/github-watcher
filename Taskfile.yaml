@@ -134,6 +134,7 @@ tasks:
         project_name='Github Watcher'
         project_slug='github-watcher'
         node_version='v21.5.0'
+        github_workflow_runs_on='ubuntu-latest'
         owner_name='Dmitry Ovsiannikov'
         owner_github_login='ovsds'
         scripts='true'

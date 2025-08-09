@@ -12,4 +12,4 @@ __pycache__/
 htmlcov/
 
 # Backend temporary files
-backend/example/state
+backend/.settings/state
