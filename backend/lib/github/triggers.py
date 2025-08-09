@@ -6,13 +6,13 @@ import re
 import typing
 import warnings
 
+import aiostream.stream as aiostream_stream
 import pydantic
 
 import lib.github.clients as github_clients
 import lib.github.models as github_models
 import lib.task.base as task_base
 import lib.task.protocols
-import lib.utils.asyncio as asyncio_utils
 import lib.utils.pydantic as pydantic_utils
 
 logger = logging.getLogger(__name__)
@@ -307,7 +307,7 @@ class GithubTriggerProcessor(task_base.BaseTriggerProcessor[GithubTriggerConfig]
         repositories = await self._get_repositories()
 
         async with self._acquire_state() as state:
-            iterators = (
+            event_iterators = (
                 self._process_subtrigger_factory(
                     config=subtrigger_config,
                     state=state,
@@ -316,7 +316,7 @@ class GithubTriggerProcessor(task_base.BaseTriggerProcessor[GithubTriggerConfig]
                 for subtrigger_config in self.config.subtriggers
             )
 
-            async for event in asyncio_utils.GatherIterators(iterators):
+            async for event in aiostream_stream.merge(*event_iterators):
                 yield event
 
     def _process_subtrigger_factory(
@@ -357,14 +357,16 @@ class GithubTriggerProcessor(task_base.BaseTriggerProcessor[GithubTriggerConfig]
         config.exclude_author |= await self._resolve_author_groups(config.exclude_author_group)
         config.exclude_author_group = set()
 
-        async for event in asyncio_utils.GatherIterators(
+        event_iterators = (
             self._process_repository_issue_created(
                 state=state,
                 config=config,
                 repository=repository.name,
             )
             for repository in repositories
-        ):
+        )
+
+        async for event in aiostream_stream.merge(*event_iterators):
             yield event
 
     async def _process_repository_issue_created(
@@ -413,14 +415,16 @@ class GithubTriggerProcessor(task_base.BaseTriggerProcessor[GithubTriggerConfig]
         config.exclude_author |= await self._resolve_author_groups(config.exclude_author_group)
         config.exclude_author_group = set()
 
-        async for event in asyncio_utils.GatherIterators(
+        event_iterators = (
             self._process_repository_pr_created(
                 state=state,
                 config=config,
                 repository=repository.name,
             )
             for repository in repositories
-        ):
+        )
+
+        async for event in aiostream_stream.merge(*event_iterators):
             yield event
 
     async def _process_repository_pr_created(
@@ -464,14 +468,16 @@ class GithubTriggerProcessor(task_base.BaseTriggerProcessor[GithubTriggerConfig]
         config: RepositoryFailedWorkflowRunSubtriggerConfig,
         repositories: list[github_models.Repository],
     ) -> typing.AsyncGenerator[task_base.Event, None]:
-        async for event in asyncio_utils.GatherIterators(
+        event_iterators = (
             self._process_repository_failed_workflow_run(
                 state=state,
                 config=config,
                 repository=repository.name,
             )
             for repository in repositories
-        ):
+        )
+
+        async for event in aiostream_stream.merge(*event_iterators):
             yield event
 
     async def _process_repository_failed_workflow_run(
