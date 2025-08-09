@@ -6,41 +6,6 @@ import pathlib
 import typing
 
 
-class GatherIterators[T]:
-    def __init__(self, iterators: typing.Iterable[typing.AsyncIterator[T]]) -> None:
-        self._iterators: dict[asyncio.Task[T], typing.AsyncIterator[T]] = {}  # {task: iterator}
-
-        for iterator in iterators:
-            self._add_iterator(iterator)
-
-    def _add_iterator(self, iterator: typing.AsyncIterator[T]) -> None:
-        coroutine = typing.cast(typing.Coroutine[None, None, T], iterator.__anext__())
-        task = asyncio.create_task(coroutine)
-        self._iterators[task] = iterator
-
-    def _delete_iterator_by_task(self, task: asyncio.Task[T]) -> None:
-        del self._iterators[task]
-
-    def _create_next_task(self, task: asyncio.Task[T]) -> None:
-        iterator = self._iterators.pop(task)
-        self._add_iterator(iterator)
-
-    @property
-    def _tasks(self) -> typing.Collection[asyncio.Task[T]]:
-        return self._iterators.keys()
-
-    async def __aiter__(self) -> typing.AsyncIterator[T]:
-        while self._iterators:
-            done, _ = await asyncio.wait(self._tasks, return_when=asyncio.FIRST_COMPLETED)
-            for task in done:
-                try:
-                    yield task.result()
-                except StopAsyncIteration:
-                    self._delete_iterator_by_task(task)
-                else:
-                    self._create_next_task(task)
-
-
 class TimeoutTimer:
     def __init__(self, timeout: float = 0):
         self._timeout = timeout
@@ -73,7 +38,6 @@ async def acquire_file_lock(path: str) -> typing.AsyncIterator[None]:
 
 
 __all__ = [
-    "GatherIterators",
     "TimeoutTimer",
     "acquire_file_lock",
 ]

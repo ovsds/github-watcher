@@ -162,6 +162,23 @@ frozenlist = ">=1.1.0"
 typing-extensions = {version = ">=4.2", markers = "python_version < \"3.13\""}
 
 [[package]]
+name = "aiostream"
+version = "0.7.0"
+description = "Generator-based operators for asynchronous iteration"
+optional = false
+python-versions = ">=3.9"
+files = [
+    {file = "aiostream-0.7.0-py3-none-any.whl", hash = "sha256:17e52dc10fdf98c4b5296c7f3569511c13bfaf12da31c072bad580817e69d705"},
+    {file = "aiostream-0.7.0.tar.gz", hash = "sha256:5ab4acd44ef5f583b6488c32ade465f43c3d7b0df039f1ee49dfb1fd1e255e02"},
+]
+
+[package.dependencies]
+typing-extensions = "*"
+
+[package.extras]
+dev = ["pytest", "pytest-asyncio", "pytest-cov"]
+
+[[package]]
 name = "annotated-types"
 version = "0.7.0"
 description = "Reusable constraint types to use with typing.Annotated"
@@ -1604,4 +1621,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.12"
-content-hash = "c86250d710ded1033f154d07ae11da3ebe13d658582f0c023c86b94dbb314e30"
+content-hash = "869ddedfdbfdcb5d4fe1c7e8a25add9dafd00369335d4b12d2331d830d451986"

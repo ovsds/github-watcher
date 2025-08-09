@@ -36,6 +36,7 @@ version = "0.0.1"
 aiofile = "^3.8.8"
 aiohttp = "^3.9.3"
 aiojobs = "^1.2.1"
+aiostream = "^0.7.0"
 cron-converter = "^1.1.0"
 gql = {extras = ["aiohttp"], version = "^3.5.0"}
 graphql-core = "^3.2.3"
