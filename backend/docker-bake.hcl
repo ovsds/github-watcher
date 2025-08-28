@@ -18,14 +18,10 @@ target "runtime" {
   args = {
     APP_VERSION = IMAGE_TAG
   }
-  output = ["type=image,push=true"]
+  output = ["type=image,push=true,oci-mediatypes=false"]
   platforms = [
     "linux/amd64",
     "linux/arm64",
-  ]
-  attest = [
-    "type=provenance,mode=max",
-    "type=sbom",
   ]
   annotations = [
     "index,manifest:org.opencontainers.image.source=http://github.com/ovsds/github-watcher",
