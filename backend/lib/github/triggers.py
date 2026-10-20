@@ -6,13 +6,13 @@ import re
 import typing
 import warnings
 
-import aiostream.stream as aiostream_stream
 import pydantic
 
 import lib.github.clients as github_clients
 import lib.github.models as github_models
 import lib.task.base as task_base
 import lib.task.protocols
+import lib.utils.asyncio as asyncio_utils
 import lib.utils.pydantic as pydantic_utils
 
 logger = logging.getLogger(__name__)
@@ -300,9 +300,8 @@ class GithubTriggerProcessor(task_base.BaseTriggerProcessor[GithubTriggerConfig]
                 for subtrigger_config in self.config.subtriggers
             )
 
-            async with aiostream_stream.merge(*event_iterators).stream() as events:
-                async for event in events:
-                    yield event
+            async for event in asyncio_utils.merge_async_iterables(*event_iterators):
+                yield event
 
     def _process_subtrigger_factory(
         self,
@@ -351,9 +350,8 @@ class GithubTriggerProcessor(task_base.BaseTriggerProcessor[GithubTriggerConfig]
             for repository in repositories
         )
 
-        async with aiostream_stream.merge(*event_iterators).stream() as events:
-            async for event in events:
-                yield event
+        async for event in asyncio_utils.merge_async_iterables(*event_iterators):
+            yield event
 
     async def _process_repository_issue_created(
         self,
@@ -410,9 +408,8 @@ class GithubTriggerProcessor(task_base.BaseTriggerProcessor[GithubTriggerConfig]
             for repository in repositories
         )
 
-        async with aiostream_stream.merge(*event_iterators).stream() as events:
-            async for event in events:
-                yield event
+        async for event in asyncio_utils.merge_async_iterables(*event_iterators):
+            yield event
 
     async def _process_repository_pr_created(
         self,
@@ -464,9 +461,8 @@ class GithubTriggerProcessor(task_base.BaseTriggerProcessor[GithubTriggerConfig]
             for repository in repositories
         )
 
-        async with aiostream_stream.merge(*event_iterators).stream() as events:
-            async for event in events:
-                yield event
+        async for event in asyncio_utils.merge_async_iterables(*event_iterators):
+            yield event
 
     async def _process_repository_failed_workflow_run(
         self,

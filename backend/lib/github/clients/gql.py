@@ -18,9 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class BaseRequest(abc.ABC):
-    @property
-    @abc.abstractmethod
-    def document(self) -> graphql.DocumentNode: ...
+    DOCUMENT: typing.ClassVar[graphql.DocumentNode]
 
     @property
     def params(self) -> dict[str, typing.Any]:
@@ -42,26 +40,24 @@ class GetRepositoriesRequest(BaseRequest):
     limit: int = 100
     after: str | None = None
 
-    @property
-    def document(self) -> graphql.DocumentNode:
-        return gql.gql("""
-            query myOrgRepos($query: String!, $limit: Int!, $after: String) {
-                search(query: $query, type: REPOSITORY, first: $limit, after: $after) {
-                    nodes {
-                        ... on Repository {
-                            name
-                            owner {
-                                login
-                            }
+    DOCUMENT = graphql.parse("""
+        query myOrgRepos($query: String!, $limit: Int!, $after: String) {
+            search(query: $query, type: REPOSITORY, first: $limit, after: $after) {
+                nodes {
+                    ... on Repository {
+                        name
+                        owner {
+                            login
                         }
                     }
-                    pageInfo {
-                        endCursor
-                        hasNextPage
-                    }
+                }
+                pageInfo {
+                    endCursor
+                    hasNextPage
                 }
             }
-            """).document
+        }
+        """)
 
     @property
     def params(self) -> dict[str, typing.Any]:
@@ -107,26 +103,24 @@ class GetRepositoryIssuesRequest(BaseRequest):
     created_after: datetime.datetime
     limit: int = 100
 
-    @property
-    def document(self) -> graphql.DocumentNode:
-        return gql.gql("""
-            query getIssues($query: String!, $limit: Int!) {
-                search(query: $query, type: ISSUE, first: $limit) {
-                    nodes {
-                        ... on Issue {
-                            id
-                            url
-                            title
-                            body
-                            createdAt
-                            author {
-                                login
-                            }
+    DOCUMENT = graphql.parse("""
+        query getIssues($query: String!, $limit: Int!) {
+            search(query: $query, type: ISSUE, first: $limit) {
+                nodes {
+                    ... on Issue {
+                        id
+                        url
+                        title
+                        body
+                        createdAt
+                        author {
+                            login
                         }
                     }
                 }
             }
-            """).document
+        }
+        """)
 
     @property
     def params(self) -> dict[str, typing.Any]:
@@ -180,26 +174,24 @@ class GetRepositoryPRsRequest(BaseRequest):
     created_after: datetime.datetime
     limit: int = 100
 
-    @property
-    def document(self) -> graphql.DocumentNode:
-        return gql.gql("""
-            query getPRs($query: String!, $limit: Int!) {
-                search(query: $query, type: ISSUE, first: $limit) {
-                    nodes {
-                        ... on PullRequest {
-                            id
-                            url
-                            title
-                            body
-                            createdAt
-                            author {
-                                login
-                            }
+    DOCUMENT = graphql.parse("""
+        query getPRs($query: String!, $limit: Int!) {
+            search(query: $query, type: ISSUE, first: $limit) {
+                nodes {
+                    ... on PullRequest {
+                        id
+                        url
+                        title
+                        body
+                        createdAt
+                        author {
+                            login
                         }
                     }
                 }
             }
-            """).document
+        }
+        """)
 
     @property
     def params(self) -> dict[str, typing.Any]:
@@ -271,14 +263,14 @@ class GqlGithubClient:
         request: BaseRequest,
         response_model: type[ResponseT],
     ) -> ResponseT:
-        logger.debug("Requesting document(%s) params(%s)", request.document, request.params)
+        graphql_request = gql.GraphQLRequest(request.DOCUMENT, variable_values=request.params)
+        logger.debug(
+            "Requesting document(%s) params(%s)",
+            graphql_request.document,
+            graphql_request.variable_values,
+        )
         async with self._gql_client() as gql_client:
-            response = await gql_client.execute_async(
-                gql.GraphQLRequest(
-                    request.document,
-                    variable_values=request.params,
-                ),
-            )
+            response = await gql_client.execute_async(graphql_request)
         parsed_response = response_model.model_validate(response)
 
         return parsed_response
