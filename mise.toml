@@ -1,0 +1,167 @@
+min_version = "2026.10.3"
+
+monorepo_root = true
+
+[monorepo]
+config_roots = [".scripts", "backend"]
+
+[tools]
+node = "26.12.0"
+uv = "0.13.1"
+python = "3.15.0"
+"pypi:poetry" = "2.5.1"
+trivy = "0.76.0"
+zizmor = "1.31.1"
+
+[settings]
+task.quiet = true
+
+[tasks.init]
+description = "Initialize project environment"
+run = [
+  "echo 'Installing mise tools...'",
+  "mise install",
+
+  "echo 'Installing node dependencies...'",
+  "if [ -f package-lock.json ]; then npm ci; else npm install; fi",
+
+  "echo 'Installing husky pre-commit...'",
+  "npm run prepare",
+
+  "echo 'Installing .scripts dependencies...'",
+  { task = "//.scripts:init" },
+
+  { task = "//backend:init" },
+]
+
+[tasks.lint]
+description = "Lint project"
+run = [
+  "echo 'Running prettier checks...'",
+  "npx --no -- prettier --check .",
+
+  "echo 'Running scripts checks...'",
+  { task = "//.scripts:lint" },
+
+  { task = "//backend:lint" },
+
+  "echo 'Running GHA checks...'",
+  'GH_TOKEN="$(gh auth token)" zizmor .',
+]
+
+[tasks.lint-fix]
+description = "Lint fix project"
+run = [
+  "echo 'Running prettier fixes...'",
+  "npx --no -- prettier --write .",
+
+  "echo 'Running scripts fixes...'",
+  { task = "//.scripts:lint-fix" },
+
+  { task = "//backend:lint-fix" },
+
+  "echo 'Running GHA checks...'",
+  'GH_TOKEN="$(gh auth token)" zizmor .',
+]
+
+[tasks.test]
+description = "Test project"
+run = [
+  "echo 'Running tests...'",
+
+  { task = "//backend:test" },
+]
+
+[tasks.clean]
+description = "Clean project environment"
+run = [
+  "echo 'Cleaning node dependencies...'",
+  "rm -rf node_modules",
+
+  "echo 'Cleaning .scripts dependencies...'",
+  { task = "//.scripts:clean" },
+
+  { task = "//backend:clean" },
+]
+
+[tasks.dependencies-update]
+description = "Update dependencies"
+run = [
+  "echo 'Updating mise tools...'",
+  "mise upgrade --bump",
+
+  "echo 'Updating node dependencies...'",
+  "npm update",
+
+  "echo 'Updating .scripts dependencies...'",
+  { task = "//.scripts:dependencies-update" },
+
+  { task = "//backend:dependencies-update" },
+]
+
+[tasks.dependencies-check]
+description = "Check dependencies"
+run = [
+  "echo 'Checking mise tools...'",
+  "mise outdated",
+
+  "echo 'Checking node dependencies...'",
+  "npm outdated",
+  "npm audit",
+
+  "echo 'Checking .scripts dependencies...'",
+  { task = "//.scripts:dependencies-check" },
+
+  { task = "//backend:dependencies-check" },
+]
+
+[tasks.update-from-template]
+description = "Update project from template; TEMPLATE_PATH=<path> in the environment overrides the source"
+run = [
+  "echo 'Updating project from template...'",
+  '''
+  cookiecutter \
+    --no-input \
+    --overwrite-if-exists \
+    --output-dir ../ \
+    "${TEMPLATE_PATH:-https://github.com/ovsds/template-repository}" \
+    project_name='Github Watcher' \
+    project_slug='github-watcher' \
+    node_version='v26.12.0' \
+    python_version='3.15.0' \
+    github_workflow_runs_on='ubuntu-latest' \
+    owner_name='Dmitry Ovsiannikov' \
+    owner_github_login='ovsds' \
+    scripts='true' \
+    services='backend' \
+    with_python='true' \
+    with_cookiecutter='false' \
+    with_trivy='true' \
+    with_zizmor='true' \
+    with_gitleaks='false' \
+    with_docker='false' \
+    with_build='true'
+  ''',
+
+  "echo 'Syncing package-lock.json with the updated package.json...'",
+  "npm install",
+
+  "echo 'Relocking .scripts for the rendered pyproject.toml...'",
+  "rm -rf .scripts/.venv",
+  "cd .scripts && mise exec -- poetry lock",
+]
+
+[tasks.configure-builder]
+description = "Configure buildx for multi-arch builds"
+run = [
+  "echo 'Configuring buildx...'",
+  "docker buildx create --driver docker-container --use",
+]
+
+[tasks.ci-image-push]
+description = "Build the backend image and push it as IMAGE_REGISTRY/IMAGE_NAME:IMAGE_TAG"
+run = [{ task = "//backend:ci-image-push" }]
+
+[tasks.ci-image-scan]
+description = "Scan the IMAGE_REGISTRY/IMAGE_NAME:IMAGE_TAG image for vulnerabilities"
+run = [{ task = "//backend:ci-image-scan" }]

@@ -10,6 +10,6 @@ Support scripts collection
 - github-cli
 - yacloud-cli
 
-### Taskfile commands
+### mise tasks
 
-For all commands see [Taskfile](Taskfile.yaml) or `task --list-all`.
+For all commands see [mise.toml](mise.toml) or `mise tasks ls`.

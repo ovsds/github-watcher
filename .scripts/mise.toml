@@ -1,0 +1,42 @@
+[tasks.init]
+description = "Initialize environment"
+run = [
+  "echo 'Installing python dependencies...'",
+  "poetry install --no-root",
+]
+
+[tasks.lint]
+description = "Lint"
+run = [
+  "echo 'Running poetry checks...'",
+  "poetry check --lock",
+]
+
+[tasks.lint-fix]
+description = "Lint fix"
+run = [
+  "echo 'Running poetry autofixes...'",
+  "poetry lock",
+  "poetry check",
+]
+
+[tasks.clean]
+description = "Clean environment"
+run = [
+  "echo 'Cleaning python dependencies...'",
+  "rm -rf .venv",
+]
+
+[tasks.dependencies-update]
+description = "Update dependencies"
+run = [
+  "echo 'Updating python dependencies...'",
+  "poetry update",
+]
+
+[tasks.dependencies-check]
+description = "Check dependencies"
+run = [
+  "echo 'Checking python dependencies...'",
+  "poetry show --outdated",
+]
