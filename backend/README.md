@@ -266,9 +266,9 @@ tasks:
 
 ### Global dependencies
 
-- [poetry](https://python-poetry.org/docs/#installation)
+- [mise](https://mise.jdx.dev/installing-mise.html), activated in the shell (`eval "$(mise activate zsh)"`); poetry and node come from the repository's root `mise.toml`
 - [trivy](https://trivy.dev/latest/getting-started/installation/) - used for security scanning
 
-### Taskfile commands
+### mise tasks
 
-For all commands see [Taskfile](Taskfile.yaml) or `task --list-all`.
+For all commands see [mise.toml](mise.toml), [mise-tasks](mise-tasks) or `mise tasks ls`.

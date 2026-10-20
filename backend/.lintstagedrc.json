@@ -5,5 +5,5 @@
     ".venv/bin/python -m ruff check",
     "../node_modules/.bin/pyright"
   ],
-  "*.toml": [".venv/bin/toml-sort --check"]
+  "{pyproject,poetry}.toml": [".venv/bin/toml-sort --check"]
 }
