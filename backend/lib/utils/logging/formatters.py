@@ -1,7 +1,7 @@
 import logging
 import typing
 
-_SECRETS: dict[str, str] = dict()  # value: replace_value
+_SECRETS: dict[str, str] = {}  # value: replace_value
 
 
 def register_secret(value: str, replace_value: str) -> None:

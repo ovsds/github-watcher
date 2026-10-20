@@ -8,7 +8,7 @@ import tests.settings as test_settings
 
 
 @pytest_asyncio.fixture(name="aiohttp_client")
-async def aiohttp_client_fixture() -> typing.AsyncGenerator[aiohttp.ClientSession, None]:
+async def aiohttp_client_fixture() -> typing.AsyncGenerator[aiohttp.ClientSession]:
     client = aiohttp.ClientSession()
     try:
         yield client

@@ -14,7 +14,7 @@ class ActionProcessorProtocol(typing.Protocol):
 
 class BaseActionConfig(pydantic_utils.IDMixinModel, pydantic_utils.TypedBaseModel):
     @classmethod
-    def factory(cls, data: typing.Any) -> "BaseActionConfig":
+    def factory(cls, data: typing.Any) -> BaseActionConfig:
         return action_config_factory(data)
 
 

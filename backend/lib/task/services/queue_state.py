@@ -9,7 +9,7 @@ import lib.utils.json as json_utils
 import lib.utils.pydantic as pydantic_utils
 
 
-class JobProcessorQueueStateMode(str, enum.Enum):
+class JobProcessorQueueStateMode(enum.StrEnum):
     LOAD = "load"
     LOAD_RESTART = "load_restart"
     ACCUMULATE = "accumulate"

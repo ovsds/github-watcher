@@ -7,7 +7,7 @@ import lib.utils.json as json_utils
 import lib.utils.pydantic as pydantic_utils
 
 
-class JobTopic(str, enum.Enum):
+class JobTopic(enum.StrEnum):
     TASK = "task_jobs"
     TRIGGER = "trigger_jobs"
     EVENT = "events_jobs"
@@ -63,7 +63,7 @@ class QueueRepositoryProtocol(typing.Protocol):
 
 class BaseQueueSettings(pydantic_utils.TypedBaseModel):
     @classmethod
-    def factory(cls, data: typing.Any) -> "BaseQueueSettings":
+    def factory(cls, data: typing.Any) -> BaseQueueSettings:
         return queue_settings_factory(data)
 
 

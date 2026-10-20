@@ -80,7 +80,7 @@ class Topic[QueueItemT: queue_base.QueueItem](asyncio.Queue[QueueItemT]):
         self._consumed_items.add(item.unique_key)
 
     @contextlib.asynccontextmanager
-    async def acquire(self) -> typing.AsyncIterator[QueueItemT]:
+    async def acquire(self) -> typing.AsyncGenerator[QueueItemT]:
         item = await self.get()
 
         try:
@@ -112,7 +112,7 @@ class MemoryQueueRepository(queue_base.BaseQueueRepository[MemoryQueueSettings])
         return self._topics[topic].empty()
 
     @contextlib.contextmanager
-    def _wrap_queue_errors(self, topic: queue_base.JobTopic) -> typing.Iterator[None]:
+    def _wrap_queue_errors(self, topic: queue_base.JobTopic) -> typing.Generator[None]:
         try:
             yield
         except Topic.TopicClosed as exc:
@@ -131,7 +131,7 @@ class MemoryQueueRepository(queue_base.BaseQueueRepository[MemoryQueueSettings])
             await self._topics[topic].put(item, validate_not_closed=validate_not_closed)
 
     @contextlib.asynccontextmanager
-    async def acquire(self, topic: queue_base.JobTopic) -> typing.AsyncIterator[queue_base.QueueItem]:
+    async def acquire(self, topic: queue_base.JobTopic) -> typing.AsyncGenerator[queue_base.QueueItem]:
         with self._wrap_queue_errors(topic):
             async with self._topics[topic].acquire() as task:
                 yield task

@@ -44,8 +44,7 @@ class GetRepositoriesRequest(BaseRequest):
 
     @property
     def document(self) -> graphql.DocumentNode:
-        return gql.gql(
-            """
+        return gql.gql("""
             query myOrgRepos($query: String!, $limit: Int!, $after: String) {
                 search(query: $query, type: REPOSITORY, first: $limit, after: $after) {
                     nodes {
@@ -62,8 +61,7 @@ class GetRepositoriesRequest(BaseRequest):
                     }
                 }
             }
-            """
-        )
+            """).document
 
     @property
     def params(self) -> dict[str, typing.Any]:
@@ -111,8 +109,7 @@ class GetRepositoryIssuesRequest(BaseRequest):
 
     @property
     def document(self) -> graphql.DocumentNode:
-        return gql.gql(
-            """
+        return gql.gql("""
             query getIssues($query: String!, $limit: Int!) {
                 search(query: $query, type: ISSUE, first: $limit) {
                     nodes {
@@ -129,8 +126,7 @@ class GetRepositoryIssuesRequest(BaseRequest):
                     }
                 }
             }
-            """
-        )
+            """).document
 
     @property
     def params(self) -> dict[str, typing.Any]:
@@ -186,8 +182,7 @@ class GetRepositoryPRsRequest(BaseRequest):
 
     @property
     def document(self) -> graphql.DocumentNode:
-        return gql.gql(
-            """
+        return gql.gql("""
             query getPRs($query: String!, $limit: Int!) {
                 search(query: $query, type: ISSUE, first: $limit) {
                     nodes {
@@ -204,8 +199,7 @@ class GetRepositoryPRsRequest(BaseRequest):
                     }
                 }
             }
-            """
-        )
+            """).document
 
     @property
     def params(self) -> dict[str, typing.Any]:
@@ -257,7 +251,7 @@ class GqlGithubClient:
     token: str
 
     @contextlib.asynccontextmanager
-    async def _gql_client(self) -> typing.AsyncGenerator[gql.Client, None]:
+    async def _gql_client(self) -> typing.AsyncGenerator[gql.Client]:
         gql_transport = gql_aiohttp.AIOHTTPTransport(
             url="https://api.github.com/graphql",
             headers={"Authorization": f"Bearer {self.token}"},
@@ -280,8 +274,10 @@ class GqlGithubClient:
         logger.debug("Requesting document(%s) params(%s)", request.document, request.params)
         async with self._gql_client() as gql_client:
             response = await gql_client.execute_async(
-                document=request.document,
-                variable_values=request.params,
+                gql.GraphQLRequest(
+                    request.document,
+                    variable_values=request.params,
+                ),
             )
         parsed_response = response_model.model_validate(response)
 
@@ -296,7 +292,7 @@ class GqlGithubClient:
     async def get_repositories(
         self,
         request: GetRepositoriesRequest,
-    ) -> typing.AsyncGenerator[github_models.Repository, None]:
+    ) -> typing.AsyncGenerator[github_models.Repository]:
         after = request.after
         while True:
             response = await self._get_repositories(

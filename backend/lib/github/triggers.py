@@ -92,16 +92,13 @@ class RepositoryIssueCreatedSubtriggerConfig(BaseSubtriggerConfig):
             exclude=self.exclude_author,
         ):
             return False
-        if not _check_applicable(
+        return _check_applicable(
             issue.title,
             include=self.include_title,
             exclude=self.exclude_title,
             include_regex=self.include_title_regex,
             exclude_regex=self.exclude_title_regex,
-        ):
-            return False
-
-        return True
+        )
 
 
 class RepositoryPRCreatedSubtriggerConfig(BaseSubtriggerConfig):
@@ -121,14 +118,11 @@ class RepositoryPRCreatedSubtriggerConfig(BaseSubtriggerConfig):
         if self.exclude_author_group:
             raise NotImplementedError("exclude_author_group must be resolved before is_applicable")
 
-        if pr.author is not None and not _check_applicable(
+        return pr.author is None or _check_applicable(
             pr.author,
             include=self.include_author,
             exclude=self.exclude_author,
-        ):
-            return False
-
-        return True
+        )
 
 
 class RepositoryFailedWorkflowRunSubtriggerConfig(BaseSubtriggerConfig):
@@ -142,14 +136,7 @@ class RepositoryFailedWorkflowRunSubtriggerConfig(BaseSubtriggerConfig):
             return False
         if workflow_run.conclusion != "failure":
             return False
-        if not _check_applicable(
-            workflow_run.name,
-            include=self.include,
-            exclude=self.exclude,
-        ):
-            return False
-
-        return True
+        return _check_applicable(workflow_run.name, include=self.include, exclude=self.exclude)
 
 
 class GithubTriggerConfig(task_base.BaseTriggerConfig):
@@ -187,10 +174,7 @@ class GithubTriggerConfig(task_base.BaseTriggerConfig):
     def is_repository_applicable(self, repository: github_models.Repository) -> bool:
         if self._include_repos and repository.name not in self._include_repos:
             return False
-        if repository.name in self.exclude_repos:
-            return False
-
-        return True
+        return repository.name not in self.exclude_repos
 
 
 class RepositoryIssueCreatedState(pydantic_utils.BaseModel):
@@ -265,7 +249,7 @@ class GithubTriggerProcessor(task_base.BaseTriggerProcessor[GithubTriggerConfig]
         await self.rest_github_client.dispose()
 
     @contextlib.asynccontextmanager
-    async def _acquire_state(self) -> typing.AsyncIterator[GithubTriggerState]:
+    async def _acquire_state(self) -> typing.AsyncGenerator[GithubTriggerState]:
         async with self.raw_state.acquire() as raw_state:
             if raw_state is None:
                 raw_state = {}
@@ -303,7 +287,7 @@ class GithubTriggerProcessor(task_base.BaseTriggerProcessor[GithubTriggerConfig]
 
         return result
 
-    async def produce_events(self) -> typing.AsyncGenerator[task_base.Event, None]:
+    async def produce_events(self) -> typing.AsyncGenerator[task_base.Event]:
         repositories = await self._get_repositories()
 
         async with self._acquire_state() as state:
@@ -316,15 +300,16 @@ class GithubTriggerProcessor(task_base.BaseTriggerProcessor[GithubTriggerConfig]
                 for subtrigger_config in self.config.subtriggers
             )
 
-            async for event in aiostream_stream.merge(*event_iterators):
-                yield event
+            async with aiostream_stream.merge(*event_iterators).stream() as events:
+                async for event in events:
+                    yield event
 
     def _process_subtrigger_factory(
         self,
         config: BaseSubtriggerConfig,
         state: GithubTriggerState,
         repositories: list[github_models.Repository],
-    ) -> typing.AsyncGenerator[task_base.Event, None]:
+    ) -> typing.AsyncGenerator[task_base.Event]:
         if isinstance(config, RepositoryIssueCreatedSubtriggerConfig):
             return self._process_all_repository_issue_created(
                 state=state,
@@ -351,7 +336,7 @@ class GithubTriggerProcessor(task_base.BaseTriggerProcessor[GithubTriggerConfig]
         state: GithubTriggerState,
         config: RepositoryIssueCreatedSubtriggerConfig,
         repositories: list[github_models.Repository],
-    ) -> typing.AsyncGenerator[task_base.Event, None]:
+    ) -> typing.AsyncGenerator[task_base.Event]:
         config.include_author |= await self._resolve_author_groups(config.include_author_group)
         config.include_author_group = set()
         config.exclude_author |= await self._resolve_author_groups(config.exclude_author_group)
@@ -366,15 +351,16 @@ class GithubTriggerProcessor(task_base.BaseTriggerProcessor[GithubTriggerConfig]
             for repository in repositories
         )
 
-        async for event in aiostream_stream.merge(*event_iterators):
-            yield event
+        async with aiostream_stream.merge(*event_iterators).stream() as events:
+            async for event in events:
+                yield event
 
     async def _process_repository_issue_created(
         self,
         state: GithubTriggerState,
         config: RepositoryIssueCreatedSubtriggerConfig,
         repository: str,
-    ) -> typing.AsyncGenerator[task_base.Event, None]:
+    ) -> typing.AsyncGenerator[task_base.Event]:
         if repository not in state.repository_issue_created:
             state.repository_issue_created[repository] = RepositoryIssueCreatedState.default_factory(
                 self.config.default_timedelta,
@@ -409,7 +395,7 @@ class GithubTriggerProcessor(task_base.BaseTriggerProcessor[GithubTriggerConfig]
         state: GithubTriggerState,
         config: RepositoryPRCreatedSubtriggerConfig,
         repositories: list[github_models.Repository],
-    ) -> typing.AsyncGenerator[task_base.Event, None]:
+    ) -> typing.AsyncGenerator[task_base.Event]:
         config.include_author |= await self._resolve_author_groups(config.include_author_group)
         config.include_author_group = set()
         config.exclude_author |= await self._resolve_author_groups(config.exclude_author_group)
@@ -424,15 +410,16 @@ class GithubTriggerProcessor(task_base.BaseTriggerProcessor[GithubTriggerConfig]
             for repository in repositories
         )
 
-        async for event in aiostream_stream.merge(*event_iterators):
-            yield event
+        async with aiostream_stream.merge(*event_iterators).stream() as events:
+            async for event in events:
+                yield event
 
     async def _process_repository_pr_created(
         self,
         state: GithubTriggerState,
         config: RepositoryPRCreatedSubtriggerConfig,
         repository: str,
-    ) -> typing.AsyncGenerator[task_base.Event, None]:
+    ) -> typing.AsyncGenerator[task_base.Event]:
         if repository not in state.repository_pr_created:
             state.repository_pr_created[repository] = RepositoryPRCreatedState.default_factory(
                 self.config.default_timedelta,
@@ -467,7 +454,7 @@ class GithubTriggerProcessor(task_base.BaseTriggerProcessor[GithubTriggerConfig]
         state: GithubTriggerState,
         config: RepositoryFailedWorkflowRunSubtriggerConfig,
         repositories: list[github_models.Repository],
-    ) -> typing.AsyncGenerator[task_base.Event, None]:
+    ) -> typing.AsyncGenerator[task_base.Event]:
         event_iterators = (
             self._process_repository_failed_workflow_run(
                 state=state,
@@ -477,15 +464,16 @@ class GithubTriggerProcessor(task_base.BaseTriggerProcessor[GithubTriggerConfig]
             for repository in repositories
         )
 
-        async for event in aiostream_stream.merge(*event_iterators):
-            yield event
+        async with aiostream_stream.merge(*event_iterators).stream() as events:
+            async for event in events:
+                yield event
 
     async def _process_repository_failed_workflow_run(
         self,
         state: GithubTriggerState,
         config: RepositoryFailedWorkflowRunSubtriggerConfig,
         repository: str,
-    ) -> typing.AsyncGenerator[task_base.Event, None]:
+    ) -> typing.AsyncGenerator[task_base.Event]:
         if repository not in state.repository_failed_workflow_run:
             state.repository_failed_workflow_run[repository] = RepositoryFailedWorkflowRunState.default_factory(
                 self.config.default_timedelta,

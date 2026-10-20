@@ -27,7 +27,7 @@ def _acquire_lock(path: str) -> typing.IO[bytes]:
 
 
 @contextlib.asynccontextmanager
-async def acquire_file_lock(path: str) -> typing.AsyncIterator[None]:
+async def acquire_file_lock(path: str) -> typing.AsyncGenerator[None]:
     loop = asyncio.get_running_loop()
     file = await loop.run_in_executor(None, _acquire_lock, path)
     try:
