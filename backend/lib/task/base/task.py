@@ -15,7 +15,7 @@ class BaseTaskConfig(pydantic_utils.IDMixinModel, pydantic_utils.TypedBaseModel)
     actions: pydantic_utils.TypedListAnnotation[action_base.BaseActionConfig]
 
     @classmethod
-    def factory(cls, data: typing.Any) -> "BaseTaskConfig":
+    def factory(cls, data: typing.Any) -> BaseTaskConfig:
         return task_config_factory(data)
 
 

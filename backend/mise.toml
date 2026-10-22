@@ -1,0 +1,207 @@
+[tools]
+python = "3.15.0"
+
+[env]
+GITHUB_WATCHER_SETTINGS_YAML = "{{config_root}}/.settings/dev.yaml"
+GITHUB_WATCHER_SETTINGS_TEST_YAML = "{{config_root}}/.settings/test.yaml"
+
+[tasks.init]
+description = "Initialize environment"
+run = [
+  "echo 'Installing python dependencies...'",
+  "poetry install --no-root --with dev",
+]
+
+[tasks.lint]
+description = "Run lint checks"
+run = [
+  "echo 'Running poetry checks...'",
+  "poetry check --lock",
+
+  "echo 'Running deptry checks...'",
+  ".venv/bin/deptry .",
+
+  "echo 'Running black checks...'",
+  ".venv/bin/python -m black --check .",
+
+  "echo 'Running toml-sort checks...'",
+  ".venv/bin/toml-sort --check pyproject.toml poetry.toml",
+
+  "echo 'Running sort-all checks...'",
+  ".venv/bin/sort-all --check $(find bin lib tests -name '*.py')",
+
+  "echo 'Running ruff checks...'",
+  ".venv/bin/python -m ruff check bin lib tests",
+
+  "echo 'Running pyright checks...'",
+  "npx --no -- pyright",
+]
+
+[tasks.lint-fix]
+description = "Fix lint issues"
+run = [
+  "echo 'Running poetry fixes...'",
+  "poetry lock",
+  "poetry check",
+
+  "echo 'Running deptry checks...'",
+  ".venv/bin/deptry .",
+
+  "echo 'Running black fixes...'",
+  ".venv/bin/python -m black --safe .",
+
+  "echo 'Running toml-sort fixes...'",
+  ".venv/bin/toml-sort --in-place pyproject.toml poetry.toml",
+
+  "echo 'Running sort-all fixes...'",
+  ".venv/bin/sort-all --no-error-on-fix $(find bin lib tests -name '*.py')",
+
+  "echo 'Running ruff fixes...'",
+  ".venv/bin/python -m ruff check --fix bin lib tests",
+
+  "echo 'Running pyright checks...'",
+  "npx --no -- pyright",
+]
+
+[tasks.image-bake]
+description = "Build image target from docker-bake.hcl"
+usage = 'arg "<target>"'
+run = [
+  'echo "Building image ${usage_target}..."',
+  'docker buildx bake "${usage_target}"',
+]
+
+[tasks.image-scan]
+description = "Scan image for vulnerabilities"
+usage = 'arg "[target]" default="runtime"'
+run = [
+  "echo 'Scanning image for vulnerabilities...'",
+  'trivy image --config trivy.yaml "github-watcher:${usage_target}"',
+]
+
+[tasks.test]
+description = "Run tests, extra arguments are passed to pytest"
+run = [
+  "echo 'Running pytest...'",
+  ".venv/bin/python -m pytest",
+]
+
+[tasks.test-container]
+description = "Run tests in container"
+run = [
+  { task = "image-bake tests_dev" },
+  { task = "image-run tests" },
+]
+
+[tasks.test-coverage-run]
+description = "Run tests with coverage"
+run = [
+  "echo 'Running test coverage...'",
+  ".venv/bin/python -m coverage run -m pytest tests",
+]
+
+[tasks.test-coverage-report]
+description = "Show test coverage report"
+run = [
+  "echo 'Reporting test coverage...'",
+  ".venv/bin/python -m coverage report -m",
+]
+
+[tasks.test-coverage-html]
+description = "Show test coverage report in browser"
+run = [
+  "echo 'Generating test coverage report...'",
+  ".venv/bin/python -m coverage html",
+  '.venv/bin/python -m webbrowser -t "file://$PWD/htmlcov/index.html"',
+]
+
+[tasks.clean]
+description = "Clean environment"
+run = [
+  "echo 'Cleaning python dependencies...'",
+  "rm -rf .venv",
+
+  "echo 'Cleaning python cache...'",
+  "find . -name __pycache__ -type d -exec rm -rf {} +",
+
+  "echo 'Cleaning pytest cache...'",
+  "rm -rf .pytest_cache",
+
+  "echo 'Cleaning ruff cache...'",
+  "rm -rf .ruff_cache",
+
+  "echo 'Cleaning coverage results...'",
+  "rm -rf .coverage",
+  "rm -rf htmlcov",
+]
+
+[tasks.dependencies-update]
+description = "Update python dependencies"
+run = [
+  "echo 'Updating python dependencies...'",
+  "poetry update",
+]
+
+[tasks.dependencies-check]
+description = "Check python dependencies"
+run = [
+  "echo 'Checking python dependencies...'",
+  "poetry show --outdated",
+]
+
+[tasks.dev-server-start]
+description = "Start development application"
+run = [
+  "echo 'Starting server...'",
+  ".venv/bin/python -m bin.main",
+]
+
+[tasks.dev-server-start-container]
+description = "Start development application in container"
+run = [
+  { task = "image-bake runtime_dev" },
+  { task = "image-run runtime --hostname runtime" },
+]
+
+[tasks.update-from-template]
+description = "Update service from template; TEMPLATE_PATH=<path> in the environment overrides the source"
+run = [
+  "echo 'Updating service from template...'",
+  '''
+  cookiecutter \
+    --no-input \
+    --overwrite-if-exists \
+    --output-dir ../ \
+    "${TEMPLATE_PATH:-https://github.com/ovsds/template-service-python}" \
+    service_name='Github Watcher Backend' \
+    service_slug='github-watcher' \
+    service_short_slug='backend' \
+    python_version='3.15.0' \
+    with_trivy='true' \
+    with_ngrok='false' \
+    with_docker='false' \
+    with_aiogram_utils='false' \
+    with_aiohttp_utils='false' \
+    with_json_utils='true'
+  ''',
+
+  "echo 'Updating poetry.lock to the new pyproject.toml...'",
+  # The task's environment predates the render: a changed Python pin needs a fresh venv and mise environment
+  "rm -rf .venv",
+  "mise install",
+  "mise exec -- poetry lock",
+]
+
+[tasks.ci-image-push]
+description = "Push image to registry for CI usage; needs IMAGE_REGISTRY and IMAGE_TAG in the environment"
+run = [
+  ': "${IMAGE_REGISTRY:?}" "${IMAGE_TAG:?}"',
+  { task = "image-bake runtime" },
+]
+
+[tasks.ci-image-scan]
+description = "Scan image for vulnerabilities; needs IMAGE_REGISTRY, IMAGE_NAME and IMAGE_TAG in the environment"
+env = { TRIVY_DISABLE_VEX_NOTICE = "true" }
+run = [
+  'trivy image --config trivy.yaml "${IMAGE_REGISTRY:?}/${IMAGE_NAME:?}:${IMAGE_TAG:?}"',
+]

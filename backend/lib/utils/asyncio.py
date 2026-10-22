@@ -5,6 +5,8 @@ import os
 import pathlib
 import typing
 
+import aiostream.stream
+
 
 class TimeoutTimer:
     def __init__(self, timeout: float = 0):
@@ -27,7 +29,7 @@ def _acquire_lock(path: str) -> typing.IO[bytes]:
 
 
 @contextlib.asynccontextmanager
-async def acquire_file_lock(path: str) -> typing.AsyncIterator[None]:
+async def acquire_file_lock(path: str) -> typing.AsyncGenerator[None]:
     loop = asyncio.get_running_loop()
     file = await loop.run_in_executor(None, _acquire_lock, path)
     try:
@@ -37,7 +39,14 @@ async def acquire_file_lock(path: str) -> typing.AsyncIterator[None]:
         os.remove(path)
 
 
+async def merge_async_iterables[T](*iterables: typing.AsyncIterable[T]) -> typing.AsyncGenerator[T]:
+    async with aiostream.stream.merge(*iterables).stream() as streamer:
+        async for item in streamer:
+            yield item
+
+
 __all__ = [
     "TimeoutTimer",
     "acquire_file_lock",
+    "merge_async_iterables",
 ]

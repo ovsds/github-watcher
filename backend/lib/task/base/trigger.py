@@ -8,14 +8,14 @@ import lib.utils.pydantic as pydantic_utils
 
 
 class TriggerProcessorProtocol(typing.Protocol):
-    def produce_events(self) -> typing.AsyncGenerator[task_base.Event, None]: ...
+    def produce_events(self) -> typing.AsyncGenerator[task_base.Event]: ...
 
     async def dispose(self) -> None: ...
 
 
 class BaseTriggerConfig(pydantic_utils.IDMixinModel, pydantic_utils.TypedBaseModel):
     @classmethod
-    def factory(cls, data: typing.Any) -> "BaseTriggerConfig":
+    def factory(cls, data: typing.Any) -> BaseTriggerConfig:
         return trigger_config_factory(data)
 
 
@@ -28,7 +28,7 @@ class BaseTriggerProcessor[ConfigT: BaseTriggerConfig](abc.ABC):
         state: task_protocols.StateProtocol,
     ) -> typing.Self: ...
 
-    def produce_events(self) -> typing.AsyncGenerator[task_base.Event, None]: ...
+    def produce_events(self) -> typing.AsyncGenerator[task_base.Event]: ...
 
     async def dispose(self) -> None: ...
 

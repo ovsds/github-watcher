@@ -67,7 +67,7 @@ async def test_process(
         event=event,
     )
 
-    assert telegram_client.send_message.awaited_once_with(
+    telegram_client.send_message.assert_awaited_once_with(
         request=telegram_clients.SendMessageRequest(
             chat_id=config.chat_id_secret.value,
             text="<b>test_title</b>\ntest_body\ntest_url",

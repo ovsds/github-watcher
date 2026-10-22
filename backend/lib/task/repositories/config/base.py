@@ -14,7 +14,7 @@ class ConfigRepositoryProtocol(typing.Protocol):
 
 class BaseConfigSettings(pydantic_utils.TypedBaseModel):
     @classmethod
-    def factory(cls, data: typing.Any) -> "BaseConfigSettings":
+    def factory(cls, data: typing.Any) -> BaseConfigSettings:
         return config_settings_factory(data)
 
 

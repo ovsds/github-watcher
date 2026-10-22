@@ -9,7 +9,7 @@ import lib.utils.pydantic as pydantic_utils
 
 class BaseStateSettings(pydantic_utils.TypedBaseModel):
     @classmethod
-    def factory(cls, data: typing.Any) -> "BaseStateSettings":
+    def factory(cls, data: typing.Any) -> BaseStateSettings:
         return state_settings_factory(data)
 
 
@@ -28,7 +28,7 @@ class State:
         await self._repository.clear(self._path)
 
     @contextlib.asynccontextmanager
-    async def acquire(self) -> typing.AsyncIterator[task_protocols.StateData | None]:
+    async def acquire(self) -> typing.AsyncGenerator[task_protocols.StateData | None]:
         async with self._repository.acquire(self._path) as state:
             yield state
 

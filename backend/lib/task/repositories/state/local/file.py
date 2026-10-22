@@ -61,7 +61,7 @@ class LocalDirStateRepository(state_base.BaseStateRepository[LocalDirStateSettin
             pass
 
     @contextlib.asynccontextmanager
-    async def acquire(self, path: str) -> typing.AsyncIterator[task_protocols.StateData | None]:
+    async def acquire(self, path: str) -> typing.AsyncGenerator[task_protocols.StateData | None]:
         async with asyncio_utils.acquire_file_lock(f"{self._root_path}/{path}.lock"):
             logger.debug("Acquired lock for State(%s)", path)
             yield await self.get(path)

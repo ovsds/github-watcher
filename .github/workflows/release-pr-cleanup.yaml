@@ -18,7 +18,7 @@ jobs:
       packages: write
 
     steps:
-      - uses: ovsds/package-lifecycle-action@v1
+      - uses: ovsds/package-lifecycle-action@d9231272af5ca6198f837847c441d1072903b185 # v1.0.2
         with:
           package-name: ${{ github.event.repository.name }}-beta
           expire-period-days: 7

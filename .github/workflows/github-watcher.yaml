@@ -17,7 +17,7 @@ jobs:
 
     steps:
       - name: Checkout config file
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           sparse-checkout: |
@@ -25,7 +25,7 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Run
-        uses: ovsds/github-watcher-action@v1
+        uses: ovsds/github-watcher-action@2ac15b13425d491a599d5cf2e9cf108d27658a35 # v1.4.0
         with:
           config_path: .github/github-watcher-config.yaml
           env_variables: |

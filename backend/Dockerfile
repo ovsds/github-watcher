@@ -1,6 +1,8 @@
 FROM base_builder AS common_builder
 
-RUN python -m pip install 'poetry>=1.7.0,<1.8.0'
+RUN python -m pip install 'poetry>=2.5.0,<2.6.0'
+# The runtime venv and image ship without pip, which vendors msgpack, urllib3 and setuptools below their security fixes
+ENV POETRY_VIRTUALENVS_OPTIONS_NO_PIP=true
 
 RUN mkdir --parents /opt/app
 COPY --from=sources pyproject.toml /opt/app/pyproject.toml
@@ -8,9 +10,11 @@ COPY --from=sources poetry.lock /opt/app/poetry.lock
 COPY --from=sources poetry.toml /opt/app/poetry.toml
 
 WORKDIR /opt/app
-RUN poetry install
+RUN poetry install --no-root
 
 FROM base_runtime AS common_runtime
+
+RUN python -m pip uninstall --yes pip
 
 RUN mkdir --parents /opt/app
 COPY --from=sources bin /opt/app/bin
@@ -30,7 +34,7 @@ COPY --from=builder /opt/app/.venv /opt/app/.venv
 
 FROM common_builder AS builder_dev
 
-RUN poetry install --with dev
+RUN poetry install --no-root --with dev
 
 FROM common_runtime AS runtime_dev
 

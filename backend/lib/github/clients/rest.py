@@ -176,7 +176,7 @@ class RestGithubClient:
     async def get_repository_workflow_runs(
         self,
         request: GetRepositoryWorkflowRunsRequest,
-    ) -> typing.AsyncGenerator[github_models.WorkflowRun, None]:
+    ) -> typing.AsyncGenerator[github_models.WorkflowRun]:
         page = request.page
 
         while True:
@@ -215,7 +215,7 @@ class RestGithubClient:
     async def get_organization_team_members(
         self,
         request: GetOrganizationTeamMembersRequest,
-    ) -> typing.AsyncGenerator[github_models.UserLogin, None]:
+    ) -> typing.AsyncGenerator[github_models.UserLogin]:
         page = request.page
         while True:
             response = await self._get_organization_team_members(
