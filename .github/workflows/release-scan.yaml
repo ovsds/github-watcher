@@ -47,7 +47,7 @@ jobs:
             mise run ci-image-scan
 
       - name: Report vulnerabilities
-        uses: ovsds/create-or-update-unique-issue-action@8999e391f74f20449dcc70e94aee731a3938d543 # v1.1.0
+        uses: ovsds/create-or-update-unique-issue-action@e5d7437e9f6acd688d3b09834d0494a732d87d2d # v1.1.1
         with:
           title: "Security scan issues for ${{ steps.get_tag.outputs.release }}"
           body: |
