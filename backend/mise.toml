@@ -178,10 +178,10 @@ run = [
     service_short_slug='backend' \
     python_version='3.15.0' \
     with_trivy='true' \
-    with_ngrok='false' \
     with_docker='false' \
-    with_aiogram_utils='false' \
     with_aiohttp_utils='false' \
+    with_http_server='false' \
+    with_prometheus='false' \
     with_json_utils='true'
   ''',
 
